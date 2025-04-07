@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+sqlalchemy
+mysqlclient
+pymysql
+bcrypt
+colorthief
+pyjwt
+python-dotenv
+pydantic<2.0
+python-multipart
+fastapi_mail
+httpx
+pytest
