@@ -1,12 +1,11 @@
 from fastapi import APIRouter, Depends,Form ,HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.user_manager.user import User
-from .user_controller import ALGORITHM, SECRET_KEY, create_user, authenticate_user, get_current_user, is_user_verified,oauth2_scheme, update_user_password
+from .user_controller import ALGORITHM, SECRET_KEY, create_user, authenticate_user, get_current_user, is_user_verified,oauth2_scheme, update_user_email, update_user_password
 import logging
 
 user_manager_router = APIRouter()
@@ -51,45 +50,117 @@ def login_with_email(
     # Інакше — успішна автентифікація
     return result
 
-@user_manager_router.get("/verify_email", response_class=HTMLResponse)
+@user_manager_router.get("/verify_email", response_class=JSONResponse)
 async def verify_email(token: str, db: Session = Depends(get_db)):
     try:
+        # Декодуємо токен
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
+        
         if email is None:
-            raise HTTPException(status_code=400, detail="Invalid token")
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "message": "Invalid token",
+                    "data": None
+                }
+            )
 
+        # Перевіряємо, чи існує користувач з таким email
         user = db.query(User).filter(User.email == email).first()
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "message": "User not found",
+                    "data": None
+                }
+            )
 
+        # Перевіряємо, чи вже підтверджено email
         if user.is_email_verified:
-            return "<h3>Email вже підтверджено ✅</h3>"
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "message": "Email already verified ✅",
+                    "data": None
+                }
+            )
 
+        # Оновлюємо статус підтвердження email
         user.is_email_verified = True
         db.commit()
-        return "<h3>Дякуємо! Ваш email підтверджено 🎉</h3>"
+
+        # Повертаємо успішну відповідь
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Thank you! Your email has been verified 🎉",
+                "data": None
+            }
+        )
 
     except jwt.PyJWTError:
-        raise HTTPException(status_code=400, detail="Invalid or expired token")
+        return JSONResponse(
+            status_code=400,
+            content={
+                "message": "Invalid or expired token",
+                "data": None
+            }
+        )
 
 @user_manager_router.get("/profile")
 def get_profile(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     logging.debug("Received request for profile with token: %s", token)  # Логування отриманого токена
+    
+    if not token:
+        logging.error("Token is missing.")
+        return JSONResponse(status_code=400, content={"message": "Token is missing"})  # Повертання помилки через JSONResponse
+
     try:
-        current_user = get_current_user(token, db)  # Передаємо токен сюди
+        current_user = get_current_user(token, db)  # Отримуємо поточного користувача
         logging.debug("User found: %s", current_user.email)  # Логування знайденого користувача
-        return {
-            "id": current_user.id,
-            "email": current_user.email
-        }
+        
+        # Повертаємо дані користувача через JSONResponse
+        return JSONResponse(
+            status_code=200,
+            content={
+                "id": current_user.id,
+                "email": current_user.email
+            }
+        )
+
     except HTTPException as e:
-        logging.error("Error retrieving user profile: %s", e.detail)  # Логування помилки, якщо вона сталася
-        raise e
+        logging.error("Error retrieving user profile: %s", e.detail)  # Логування помилки
+        # Повертання помилки через JSONResponse
+        return JSONResponse(
+            status_code=e.status_code,
+            content={"message": e.detail}
+        )
+
+    except Exception as e:
+        # Логування непередбачених помилок
+        logging.error("Unexpected error: %s", str(e))
+        # Повертання помилки сервера
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Internal Server Error"}
+        )
 
 @user_manager_router.get("/is_activated")
 def is_user_activated(user_id: int, db: Session = Depends(get_db)):
-    return is_user_verified(user_id,db)
+    try:
+        is_verified = is_user_verified(user_id, db)  # Перевірка, чи користувач активований
+        return JSONResponse(
+            status_code=200,
+            content={"is_activated": is_verified}  # Повертаємо статус активації користувача
+        )
+    except Exception as e:
+        logging.error("Unexpected error: %s", str(e))
+        return JSONResponse(
+            status_code=500,
+            content={"message": "Internal Server Error"}
+        )
 
 @user_manager_router.put("/change-password", summary="Changes the password for the currently authenticated user")
 def change_password(
@@ -111,5 +182,49 @@ def change_password(
         - `401 Unauthorized`: User is not authenticated.
     """
 
-    current_user = get_current_user(token, db)
-    return update_user_password(db, current_user, old_password, new_password)
+    try:
+        current_user = get_current_user(token, db)
+        result = update_user_password(db, current_user, old_password, new_password)
+        return JSONResponse(status_code=200, content=result)
+
+    except HTTPException as e:
+        logging.error(f"Error updating password: {e.detail}")
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail,"data":""})
+
+    except Exception as e:
+        logging.error(f"Unexpected error: {str(e)}")
+        return JSONResponse(status_code=500, content={"message": "Internal server error","data":""})
+    
+
+@user_manager_router.put("/change-email", summary="Changes the email for the currently authenticated user")
+def change_email(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+    password: str = Form(...),
+    new_email: str = Form(...)
+):
+    """
+    **Changes the email for the currently authenticated user**
+    
+    - **Headers**: `Authorization: Bearer <token>`
+    - **Parameters**:
+        - `password`: Current password.
+        - `new_email`: New email.
+    - **Response**:
+        - `200 OK`: Email changed successfully.
+        - `400 Bad Request`: Incorrect password.
+        - `401 Unauthorized`: User is not authenticated.
+    """
+
+    try:
+        current_user = get_current_user(token, db)
+        result = update_user_email(db, current_user, password, new_email)
+        return JSONResponse(status_code=200, content=result)
+
+    except HTTPException as e:
+        logging.error(f"Error updating email: {e.detail}")
+        return JSONResponse(status_code=e.status_code, content={"message": e.detail})
+
+    except Exception as e:
+        logging.error(f"Unexpected error: {str(e)}")
+        return JSONResponse(status_code=500, content={"message": "Internal server error"})

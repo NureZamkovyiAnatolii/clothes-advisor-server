@@ -142,7 +142,7 @@ def authenticate_user(db: Session, email: str, password: str):
 
     # Generate token for the user
     access_token = create_access_token(
-        data={"sub": str(user.id)},
+        data={"sub": str(user.email)},
         expires_delta=timedelta(minutes=30)
     )
 
@@ -159,18 +159,18 @@ def get_current_user(token: str, db: Session):
     logging.debug("Decoding token: %s", token)  # Логування токена
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        if not user_id:
+        user_email: str = payload.get("sub")
+        if not user_email:
             logging.error("Invalid token: User ID not found")  # Логування помилки, якщо ID відсутнє
             raise HTTPException(status_code=401, detail="Invalid token")
-        logging.debug("Decoded user ID: %s", user_id)  # Логування ID користувача
+        logging.debug("Decoded user email: %s", user_email)  # Логування ID користувача
     except jwt.PyJWTError as e:
         logging.debug("JWT error: %s", str(e))  # Логування помилки декодування
         raise HTTPException(status_code=401, detail="Could not validate credentials")
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.email == user_email).first()
     if user is None:
-        logging.debug("User with ID %s not found in DB", user_id)  # Логування, якщо користувач не знайдений
+        logging.debug("User with email %s not found in DB", user_email)  # Логування, якщо користувач не знайдений
         raise HTTPException(status_code=401, detail="User not found")
     logging.debug("User found in DB: %s", user.email)  # Логування знайденого користувача
     return user
@@ -199,30 +199,42 @@ def is_user_verified(user_id, db: Session) -> bool:
     user = db.query(User).filter(User.id == user_id).first()
     return user is not None and user.is_email_verified
 
+# Function to update the user's password
 def update_user_password(db: Session, user: User, old_password: str, new_password: str):
     """
-    Оновлює пароль користувача після перевірки старого пароля.
+    Updates the user's password after verifying the old password.
     
-    :param db: Сесія бази даних
-    :param user: Поточний користувач (об'єкт User)
-    :param old_password: Поточний пароль користувача
-    :param new_password: Новий пароль для користувача
-    :raises HTTPException: Якщо старий пароль неправильний
-    :return: Повідомлення про успішну зміну пароля
+    :param db: Database session
+    :param user: The current user (User object)
+    :param old_password: The user's current password
+    :param new_password: The new password for the user
+    :raises HTTPException: If the old password is incorrect
+    :return: A message confirming the successful password change
     """
     if not verify_password(old_password, user.password):
-        raise HTTPException(status_code=400, detail="Неправильний старий пароль")
+        raise HTTPException(status_code=400, detail="Incorrect old password")
 
     user.password = hash_password(new_password)
     db.commit()
 
-    return {"message": "Пароль успішно змінено"}
+    return {"message": "Password successfully updated", "data":""}
 
+# Function to update the user's email
 def update_user_email(db: Session, user: User, password: str, new_email: str):
+    """
+    Updates the user's email after verifying the password.
+    
+    :param db: Database session
+    :param user: The current user (User object)
+    :param password: The user's current password
+    :param new_email: The new email address for the user
+    :raises HTTPException: If the password is incorrect
+    :return: A message confirming the successful email change
+    """
     if not verify_password(password, user.password):
-        raise HTTPException(status_code=400, detail="Неправильний пароль")
+        raise HTTPException(status_code=400, detail="Incorrect password")
 
     user.email = new_email
     db.commit()
 
-    return {"message": "Email успішно змінено"}
+    return {"message": "Email successfully updated", "data":""}
