@@ -1,27 +1,37 @@
 from fastapi import FastAPI
 from app.routes import router
-from app.user_manager.routes import user_manager_router  # Імпортуємо маршрути
-#from app.photo_manager.routes import photo_router  # Імпортуємо маршрути
+from app.user_manager.routes import user_manager_router  # Import routes
+from app.close_manager.routes import close_router
+# from app.photo_manager.routes import photo_router  # Import routes
 from .database import engine
 import logging
+from fastapi.middleware.cors import CORSMiddleware
 
 try:
     connection = engine.connect()
-    print("✅Підключення до бази даних успішне!")
+    print("✅ Successfully connected to the database!")
     app = FastAPI(debug=True)
+
+    # Allow requests from React (localhost:3000)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000"],  # or ["*"] for all
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    
     logging.basicConfig(level=logging.DEBUG)
     app.include_router(router)
 
-    # Додаємо маршрути з модуля user_manager
+    # Add routes from the user_manager module
     app.include_router(user_manager_router)
- #   app.include_router(photo_router)
-    print("Connected to database!")
-    @app.get("/")
+    app.include_router(close_router)
+    
+
+    @app.get("/", tags=["Ping"])
     def read_root():
         return {"message": "FastAPI"}
+
 except Exception as e:
-    print(f"❌ Помилка підключення до бази даних: {e}")
-
-
-
-
+    print(f"❌ Database connection error: {e}")

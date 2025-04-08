@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends,Form ,HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.user_manager.user import User
 from .user_controller import ALGORITHM, SECRET_KEY, create_user, authenticate_user, get_current_user, is_user_verified,oauth2_scheme, update_user_password
-from .mail_controller import verify_code
 import logging
 
 user_manager_router = APIRouter()

@@ -4,50 +4,53 @@ from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 import os
 
-# Завантажуємо змінні з .env файлу
+# Load environment variables from the .env file
 load_dotenv()
 
-# Отримуємо DATABASE_URL зі змінних середовища
+# Get DATABASE_URL from environment variables
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Створюємо engine для підключення до бази даних
+# Create the engine for connecting to the database
 engine = create_engine(DATABASE_URL, pool_size=10, max_overflow=20)
 
-# Створюємо SessionLocal для сесії
+# Create SessionLocal for database sessions
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Основний клас для створення таблиць
+# Base class for creating tables
 Base = declarative_base()
 
-# Імпортуємо моделі
+# Import models
 from app.user_manager.user import User
+from app.close_manager.clothing_combination import ClothingCombination
+from app.close_manager.сlothing_item import ClothingItem
 
-# Перевірка існуючих таблиць в БД
+# Inspect existing tables in the database
 inspector = inspect(engine)
 existing_tables = inspector.get_table_names()
 
-# Виведення списку існуючих таблиць до створення нових
-print("Існуючі таблиці в базі даних:")
+# Display existing tables before creating new ones
+print("🚀Existing tables in the database:")
 for table in existing_tables:
     print(f"- {table}")
 
-# Створення таблиць, якщо їх ще не існує
+# Create tables if they do not already exist
 Base.metadata.create_all(bind=engine)
 
-# Перевірка, чи були створені нові таблиці після виклику create_all
+# Check for new tables created by create_all
 new_tables = set(Base.metadata.tables.keys()) - set(existing_tables)
 
-# Виведення списку нових таблиць
+# Display newly created tables
 if new_tables:
-    print(f"Були створені нові таблиці: {', '.join(new_tables)}")
+    print(f"🛠️New tables created: {', '.join(new_tables)}")
 else:
-    print("Таблиці вже існують або не було створено нових.")
+    print("Tables already exist or no new tables were created.")
 
-# Виведення таблиць, що є в Base після створення
-print("Таблиці в Base після створення:")
+# Display all tables registered in Base
+print("🚀Tables registered in Base:")
 for table in Base.metadata.tables:
     print(f"- {table}")
 
+# Dependency for getting the database session
 def get_db():
     db = SessionLocal()
     try:

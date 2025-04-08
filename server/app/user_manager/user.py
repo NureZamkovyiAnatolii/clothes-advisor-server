@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, Integer,Boolean, String
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 class User(Base):
@@ -10,3 +11,6 @@ class User(Base):
     password = Column(String(255), unique=False, nullable=False)
     created_at = Column(DateTime, default=datetime.now(timezone.utc))  # Час створення
     is_email_verified = Column(Boolean, default=False)  
+
+    combinations = relationship("ClothingCombination", back_populates="owner")
+
