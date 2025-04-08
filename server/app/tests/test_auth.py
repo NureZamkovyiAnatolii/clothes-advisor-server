@@ -11,12 +11,15 @@ def test_get_profile_with_token():
     }
 
     # Get the token
-    response = client.post("/login_with_email", data=login_data) # use http://127.0.0.1:8000/token in real project  
+    response = client.post("/login_with_email", data=login_data)
     assert response.status_code == 200, f"Error obtaining token: {response.json()}"
 
-    # Get the token
-    token = response.json().get("access_token")
-    assert token, "Token not obtained"
+    # Extract token from response["data"]
+    token_data = response.json().get("data")
+    assert token_data, "Token data missing"
+
+    token = token_data.get("access_token")
+    assert token, "Access token not found in response"
 
     # Request to /profile with the token
     headers = {"Authorization": f"Bearer {token}"}

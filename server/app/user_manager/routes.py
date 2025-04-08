@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends,Form ,HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
 from pydantic import BaseModel
@@ -11,18 +11,18 @@ import logging
 
 user_manager_router = APIRouter()
 
-# Реєстрація користувача
 @user_manager_router.post("/register", description="Create a new user in the system.")
 async def register(
     db: Session = Depends(get_db),
     email: str = Form(...),
     password: str = Form(...),
-    locale: str = Form('ua',description="Language for the confirmation message. Options: 'ua' for Ukrainian, 'en' for English.")  # Додаємо параметр локалізації з значенням за замовчуванням 'ua'
+    locale: str = Form('ua', description="Language for the confirmation message. Options: 'ua' for Ukrainian, 'en' for English.")
 ):
-    user = await create_user(db, email, password, locale)
-    logging.debug(f"Retrieved user: {user}")
+    response = await create_user(db, email, password, locale)
+    logging.debug(f"Retrieved response: {response}")
 
-    return {"message": "User registered successfully", "user_id": user['user'].id}
+    # Тепер треба отримувати дані з content
+    return response
 
 # Додаємо OAuth2 схему для Swagger UI
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -42,15 +42,14 @@ def login_with_email(
     password: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    user = authenticate_user(db, email, password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+    result = authenticate_user(db, email, password)
 
-    # Повертаємо токен (або JWT, якщо ти його створюєш)
-    return {
-        "access_token": user["access_token"],  # наприклад, якщо функція повертає словник
-        "token_type": "bearer"
-    }
+    # Якщо це JSONResponse — тобто помилка, просто повертаємо її
+    if isinstance(result, JSONResponse):
+        return result
+
+    # Інакше — успішна автентифікація
+    return result
 
 @user_manager_router.get("/verify_email", response_class=HTMLResponse)
 async def verify_email(token: str, db: Session = Depends(get_db)):

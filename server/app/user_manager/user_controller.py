@@ -1,8 +1,11 @@
+import re
 import bcrypt
+from fastapi.responses import JSONResponse
 import jwt
 import os
 import logging
 from datetime import datetime, timedelta, timezone
+from scipy import stats
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
@@ -34,29 +37,76 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 # Оновлена функція створення користувача
+from fastapi.responses import JSONResponse
+
 async def create_user(db: Session, email: str, password: str, locale: str):
     try:
+        # Перевірка формату email
+        email_regex = r"(^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$)"
+        if not re.match(email_regex, email):
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "message": "Invalid email format",
+                    "data": None
+                }
+            )
+
+        # Перевірка, чи email вже існує в базі
+        user = db.query(User).filter(User.email == email).first()
+        if user:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "message": "Email is already taken",
+                    "data": None
+                }
+            )
+
+        # Хешування пароля
         hashed_password = hash_password(password)
 
+        # Створення користувача
         user = User(
             email=email,
             password=hashed_password,
-            is_email_verified=False,  # Email ще не підтверджений
+            is_email_verified=False,
         )
-        
+
         db.add(user)
         db.commit()
         db.refresh(user)
-        user = db.query(User).filter(User.email == email).first()
+
+        # Створення токену доступу
         token = create_access_token({"sub": email}, expires_delta=timedelta(hours=24))
-        # Відправка лінку для підтвердження email
-        await send_verification_link(email, token, locale)  
-        return {"user": user, "access_token": token, "token_type": "bearer"}
+
+        # Надсилання посилання для підтвердження електронної пошти
+        await send_verification_link(email, token, locale)
+
+        # Повернення відповіді про успіх
+        return JSONResponse(
+            status_code=201,
+            content={
+                "message": "Authentication successful",
+                "data": {
+                    "access_token": token,
+                    "token_type": "bearer"
+                }
+            }
+        )
+
     except SQLAlchemyError as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "message": "Database error",
+                "data": None
+            }
+        )
 
-# 🔹 Функція створення JWT-токена
+
+# 🔹 Authenticate user and generate JWT token
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
@@ -68,13 +118,42 @@ def authenticate_user(db: Session, email: str, password: str):
     user = db.query(User).filter(User.email == email).first()
     logging.debug(f"Retrieved user: {user}")
 
-    if not user or not verify_password(password, user.password):
-        logging.debug(f"Authentication failed for user: {email}")
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    # Check if user exists in DB
+    if not user:
+        logging.debug(f"No user found with email: {email}")
+        return JSONResponse(
+            status_code=404,
+            content={
+                "message": "User not found",
+                "data": None
+            }
+        )
 
-    # Створюємо токен для користувача
-    access_token = create_access_token(data={"sub": str(user.id)}, expires_delta=timedelta(minutes=30))
-    return {"access_token": access_token, "token_type": "bearer"}
+    # Check password
+    if not verify_password(password, user.password):
+        logging.debug(f"Authentication failed for user: {email}")
+        return JSONResponse(
+            status_code=401,
+            content={
+                "message": "Incorrect password",
+                "data": None
+            }
+        )
+
+    # Generate token for the user
+    access_token = create_access_token(
+        data={"sub": str(user.id)},
+        expires_delta=timedelta(minutes=30)
+    )
+
+    return {
+        "message": "Authentication successful",
+        "data": {
+            "access_token": access_token,
+            "token_type": "bearer"
+        }
+    }
+
 
 def get_current_user(token: str, db: Session):
     logging.debug("Decoding token: %s", token)  # Логування токена
