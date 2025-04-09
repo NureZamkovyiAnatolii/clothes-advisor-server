@@ -10,21 +10,24 @@ from app.close_manager.clothing_controller import add_clothing_item_to_db, save_
 
 close_router = APIRouter(tags=["Close Operations"])
 
+
 def get_dominant_color(file: UploadFile):
-    """Визначає домінантний колір зображення"""
-    img = Image.open(file.file)  # Використовуємо file.file, щоб отримати доступ до байтового потоку
+    """Determines the dominant color of an image"""
+    img = Image.open(
+        file.file)  # Use file.file to access the byte stream
     img = img.convert("RGB")
     buffer = BytesIO()
     img.save(buffer, format="JPEG")
     buffer.seek(0)
 
     color_thief = ColorThief(buffer)
-    return color_thief.get_color(quality=1)  # Повертає (R, G, B)
+    return color_thief.get_color(quality=1)  # (R, G, B)
+
 
 @close_router.post("/add-clothing-item", summary="Add a new clothing item")
 async def add_clothing_item(
-    file: UploadFile = File(...),  # Завантаження фото
-    name: str = Form(...),  
+    file: UploadFile = File(...),  # Upload image
+    name: str = Form(...),
     category: str = Form(...),
     season: str = Form(...),
     red: Optional[str] = Form(None),
@@ -38,19 +41,41 @@ async def add_clothing_item(
     is_favorite: bool = Form(False),
     db: Session = Depends(get_db)
 ):
-    # Збереження файлу на сервері
+    """
+    **Adds a new clothing item to the collection.**
+
+    - **Headers**: `Authorization: Bearer <token>`
+    - **Parameters**:
+        - `file`: Image of the clothing item.
+        - `name`: Name of the clothing item.
+        - `category`: Category of the clothing item (e.g., shirt, pants).
+        - `season`: Season for the clothing item (e.g., summer, winter).
+        - `red`, `green`, `blue`: Optional color values for the clothing item. If not provided, the color will be determined automatically from the image.
+        - `material`: Material of the clothing item (e.g., cotton, leather).
+        - `brand`: Brand of the clothing item.
+        - `purchase_date`: Date of purchase for the clothing item.
+        - `price`: Price of the clothing item.
+        - `is_favorite`: Boolean indicating whether the item is a favorite.
+    - **Response**:
+        - `200 OK`: Clothing item added successfully.
+        - `400 Bad Request`: Invalid color values (if provided).
+        - `401 Unauthorized`: User is not authenticated.
+        - `422 Unprocessable Entity`: Image processing error or missing required parameters.
+    """
+    # Save the file to the server
     filename = save_file(file)
-    # Отримуємо id користувача через токен
+    # Get the user ID via the token
     try:
-        # Отримуємо id користувача з токена
+        # Get the user ID from the token
         owner_id = get_current_user_id(token, db)
 
     except HTTPException as e:
-        # Якщо виникла помилка (наприклад, неправильний токен або користувач не знайдений)
-        raise e  # Просто перекидаємо виключення далі, щоб FastAPI міг відповісти клієнту
-    # Якщо колір не вказано, визначаємо його автоматично
+        # If an error occurs (e.g., invalid token or user not found)
+        raise e  # Simply raise the exception so FastAPI can respond to the client
+    # If color is not specified, determine it automatically
     if not red or not green or not blue:
-        red, green, blue = get_dominant_color(file)  # Викликаємо get_dominant_color з файлом
+        # Call get_dominant_color with the file
+        red, green, blue = get_dominant_color(file)
     else:
         try:
             red = int(red)
@@ -58,22 +83,22 @@ async def add_clothing_item(
             blue = int(blue)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid color values")
-    
-    # Викликаємо функцію для додавання елемента в базу
+
+    # Call the function to add the item to the database
     new_clothing_item = add_clothing_item_to_db(
-        db, 
-        filename, 
-        name, 
-        category, 
-        season, 
+        db,
+        filename,
+        name,
+        category,
+        season,
         red,
         green,
-        blue, 
-        material, 
-        brand, 
-        purchase_date, 
-        price, 
-        is_favorite, 
+        blue,
+        material,
+        brand,
+        purchase_date,
+        price,
+        is_favorite,
         owner_id
     )
 

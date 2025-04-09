@@ -33,11 +33,14 @@ def hash_password(password: str) -> str:
     return hashed_password.decode('utf-8')
 
 # 🔹 Перевірка пароля
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
+
 # Оновлена функція створення користувача
-from fastapi.responses import JSONResponse
+
 
 async def create_user(db: Session, email: str, password: str, locale: str):
     try:
@@ -78,7 +81,8 @@ async def create_user(db: Session, email: str, password: str, locale: str):
         db.refresh(user)
 
         # Створення токену доступу
-        token = create_access_token({"sub": email}, expires_delta=timedelta(hours=24))
+        token = create_access_token(
+            {"sub": email}, expires_delta=timedelta(hours=24))
 
         # Надсилання посилання для підтвердження електронної пошти
         await send_verification_link(email, token, locale)
@@ -109,11 +113,14 @@ async def create_user(db: Session, email: str, password: str, locale: str):
 # 🔹 Authenticate user and generate JWT token
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.now(
+        timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})  # Додаємо час дії токену
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 # 🔹 Аутентифікація користувача та створення JWT-токена
+
+
 def authenticate_user(db: Session, email: str, password: str):
     user = db.query(User).filter(User.email == email).first()
     logging.debug(f"Retrieved user: {user}")
@@ -161,22 +168,30 @@ def get_current_user(token: str, db: Session):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_email: str = payload.get("sub")
         if not user_email:
-            logging.error("Invalid token: User email not found")  # Логування помилки, якщо email відсутній
-            return JSONResponse(status_code=401, content={"detail": "Invalid token"})  # Повертаємо JSONResponse при помилці
-        logging.debug("Decoded user email: %s", user_email)  # Логування email користувача
+            # Логування помилки, якщо email відсутній
+            logging.error("Invalid token: User email not found")
+            # Повертаємо JSONResponse при помилці
+            return JSONResponse(status_code=401, content={"detail": "Invalid token"})
+        # Логування email користувача
+        logging.debug("Decoded user email: %s", user_email)
     except jwt.ExpiredSignatureError:
-        logging.error("Token has expired")  # Логування, якщо токен прострочений
+        # Логування, якщо токен прострочений
+        logging.error("Token has expired")
         return JSONResponse(status_code=401, content={"detail": "Token has expired"})
     except jwt.PyJWTError as e:
-        logging.error("JWT decoding error: %s", str(e))  # Логування помилки декодування
+        # Логування помилки декодування
+        logging.error("JWT decoding error: %s", str(e))
         return JSONResponse(status_code=401, content={"detail": "Could not validate credentials"})
 
     user = db.query(User).filter(User.email == user_email).first()
     if user is None:
-        logging.debug("User with email %s not found in DB", user_email)  # Логування, якщо користувач не знайдений
+        # Логування, якщо користувач не знайдений
+        logging.debug("User with email %s not found in DB", user_email)
         return JSONResponse(status_code=401, content={"detail": "User not found"})
-    logging.debug("User found in DB: %s", user.email)  # Логування знайденого користувача
+    # Логування знайденого користувача
+    logging.debug("User found in DB: %s", user.email)
     return user  # Повертаємо користувача, якщо він знайдений
+
 
 def get_current_user_id(token: str, db: Session):
     logging.debug("Decoding token: %s", token)  # Логування токена
@@ -184,29 +199,37 @@ def get_current_user_id(token: str, db: Session):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_email: str = payload.get("sub")
         if not user_email:
-            logging.error("Invalid token: User ID not found")  # Логування помилки, якщо ID відсутнє
+            # Логування помилки, якщо ID відсутнє
+            logging.error("Invalid token: User ID not found")
             raise HTTPException(status_code=401, detail="Invalid token")
-        logging.debug("Decoded user email: %s", user_email)  # Логування ID користувача
+        # Логування ID користувача
+        logging.debug("Decoded user email: %s", user_email)
     except jwt.PyJWTError as e:
         logging.debug("JWT error: %s", str(e))  # Логування помилки декодування
-        raise HTTPException(status_code=401, detail="Could not validate credentials")
+        raise HTTPException(
+            status_code=401, detail="Could not validate credentials")
 
     user = db.query(User).filter(User.email == user_email).first()
     if user is None:
-        logging.debug("User with email %s not found in DB", user_email)  # Логування, якщо користувач не знайдений
+        # Логування, якщо користувач не знайдений
+        logging.debug("User with email %s not found in DB", user_email)
         raise HTTPException(status_code=401, detail="User not found")
-    logging.debug("User found in DB: %s", user.email)  # Логування знайденого користувача
+    # Логування знайденого користувача
+    logging.debug("User found in DB: %s", user.email)
     return user.id
+
 
 def is_user_verified(user_id, db: Session) -> bool:
     user = db.query(User).filter(User.id == user_id).first()
     return user is not None and user.is_email_verified
 
 # Function to update the user's password
+
+
 def update_user_password(db: Session, user: User, old_password: str, new_password: str):
     """
     Updates the user's password after verifying the old password.
-    
+
     :param db: Database session
     :param user: The current user (User object)
     :param old_password: The user's current password
@@ -220,13 +243,15 @@ def update_user_password(db: Session, user: User, old_password: str, new_passwor
     user.password = hash_password(new_password)
     db.commit()
 
-    return {"detail": "Password successfully updated", "data":""}
+    return {"detail": "Password successfully updated", "data": ""}
 
 # Function to update the user's email
+
+
 def update_user_email(db: Session, user: User, password: str, new_email: str):
     """
     Updates the user's email after verifying the password.
-    
+
     :param db: Database session
     :param user: The current user (User object)
     :param password: The user's current password
@@ -240,4 +265,4 @@ def update_user_email(db: Session, user: User, password: str, new_email: str):
     user.email = new_email
     db.commit()
 
-    return {"detail": "Email successfully updated", "data":""}
+    return {"detail": "Email successfully updated", "data": ""}
