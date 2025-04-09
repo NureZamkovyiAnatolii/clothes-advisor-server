@@ -47,7 +47,7 @@ async def create_user(db: Session, email: str, password: str, locale: str):
             return JSONResponse(
                 status_code=400,
                 content={
-                    "message": "Invalid email format",
+                    "detail": "Invalid email format",
                     "data": None
                 }
             )
@@ -58,7 +58,7 @@ async def create_user(db: Session, email: str, password: str, locale: str):
             return JSONResponse(
                 status_code=400,
                 content={
-                    "message": "Email is already taken",
+                    "detail": "Email is already taken",
                     "data": None
                 }
             )
@@ -87,7 +87,7 @@ async def create_user(db: Session, email: str, password: str, locale: str):
         return JSONResponse(
             status_code=201,
             content={
-                "message": "Authentication successful",
+                "detail": "Authentication successful",
                 "data": {
                     "access_token": token,
                     "token_type": "bearer"
@@ -100,7 +100,7 @@ async def create_user(db: Session, email: str, password: str, locale: str):
         return JSONResponse(
             status_code=500,
             content={
-                "message": "Database error",
+                "detail": "Database error",
                 "data": None
             }
         )
@@ -124,7 +124,7 @@ def authenticate_user(db: Session, email: str, password: str):
         return JSONResponse(
             status_code=404,
             content={
-                "message": "User not found",
+                "detail": "User not found",
                 "data": None
             }
         )
@@ -135,7 +135,7 @@ def authenticate_user(db: Session, email: str, password: str):
         return JSONResponse(
             status_code=401,
             content={
-                "message": "Incorrect password",
+                "detail": "Incorrect password",
                 "data": None
             }
         )
@@ -147,7 +147,7 @@ def authenticate_user(db: Session, email: str, password: str):
     )
 
     return {
-        "message": "Authentication successful",
+        "detail": "Authentication successful",
         "data": {
             "access_token": access_token,
             "token_type": "bearer"
@@ -156,6 +156,29 @@ def authenticate_user(db: Session, email: str, password: str):
 
 
 def get_current_user(token: str, db: Session):
+    logging.debug("Decoding token: %s", token)  # Логування токена
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_email: str = payload.get("sub")
+        if not user_email:
+            logging.error("Invalid token: User email not found")  # Логування помилки, якщо email відсутній
+            return JSONResponse(status_code=401, content={"detail": "Invalid token"})  # Повертаємо JSONResponse при помилці
+        logging.debug("Decoded user email: %s", user_email)  # Логування email користувача
+    except jwt.ExpiredSignatureError:
+        logging.error("Token has expired")  # Логування, якщо токен прострочений
+        return JSONResponse(status_code=401, content={"detail": "Token has expired"})
+    except jwt.PyJWTError as e:
+        logging.error("JWT decoding error: %s", str(e))  # Логування помилки декодування
+        return JSONResponse(status_code=401, content={"detail": "Could not validate credentials"})
+
+    user = db.query(User).filter(User.email == user_email).first()
+    if user is None:
+        logging.debug("User with email %s not found in DB", user_email)  # Логування, якщо користувач не знайдений
+        return JSONResponse(status_code=401, content={"detail": "User not found"})
+    logging.debug("User found in DB: %s", user.email)  # Логування знайденого користувача
+    return user  # Повертаємо користувача, якщо він знайдений
+
+def get_current_user_id(token: str, db: Session):
     logging.debug("Decoding token: %s", token)  # Логування токена
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -171,26 +194,6 @@ def get_current_user(token: str, db: Session):
     user = db.query(User).filter(User.email == user_email).first()
     if user is None:
         logging.debug("User with email %s not found in DB", user_email)  # Логування, якщо користувач не знайдений
-        raise HTTPException(status_code=401, detail="User not found")
-    logging.debug("User found in DB: %s", user.email)  # Логування знайденого користувача
-    return user
-
-def get_current_user_id(token: str, db: Session):
-    logging.debug("Decoding token: %s", token)  # Логування токена
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        if not user_id:
-            logging.error("Invalid token: User ID not found")  # Логування помилки, якщо ID відсутнє
-            raise HTTPException(status_code=401, detail="Invalid token")
-        logging.debug("Decoded user ID: %s", user_id)  # Логування ID користувача
-    except jwt.PyJWTError as e:
-        logging.debug("JWT error: %s", str(e))  # Логування помилки декодування
-        raise HTTPException(status_code=401, detail="Could not validate credentials")
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if user is None:
-        logging.debug("User with ID %s not found in DB", user_id)  # Логування, якщо користувач не знайдений
         raise HTTPException(status_code=401, detail="User not found")
     logging.debug("User found in DB: %s", user.email)  # Логування знайденого користувача
     return user.id
@@ -217,7 +220,7 @@ def update_user_password(db: Session, user: User, old_password: str, new_passwor
     user.password = hash_password(new_password)
     db.commit()
 
-    return {"message": "Password successfully updated", "data":""}
+    return {"detail": "Password successfully updated", "data":""}
 
 # Function to update the user's email
 def update_user_email(db: Session, user: User, password: str, new_email: str):
@@ -237,4 +240,4 @@ def update_user_email(db: Session, user: User, password: str, new_email: str):
     user.email = new_email
     db.commit()
 
-    return {"message": "Email successfully updated", "data":""}
+    return {"detail": "Email successfully updated", "data":""}

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -14,13 +14,18 @@ class ClothingItem(Base):
     name = Column(String(100), nullable=False)  # назва одягу
     category = Column(String(50), nullable=False)  # категорія (головний убір тощо)
     season = Column(String(20), nullable=False)  # сезонність
-    color = Column(String(30), nullable=False)  # основний колір
+
+    red = Column(Integer, nullable=True)  # червоний компонент (0-255)
+    green = Column(Integer, nullable=True)  # зелений компонент (0-255)
+    blue = Column(Integer, nullable=True)  # синій компонент (0-255)
+
     material = Column(String(50), nullable=False)  # матеріал
 
     brand = Column(String(100), nullable=True)  # опційне поле
     purchase_date = Column(Date, nullable=True)  # дата придбання (опційно)
     price = Column(Float, nullable=True)  # вартість (опційно)
-
+    is_favorite = Column(Boolean, default=False, nullable=False)  # чи є улюбленим
+    
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     owner = relationship("User")
 
