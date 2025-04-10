@@ -31,7 +31,7 @@ def generate_verification_code(length=6) -> str:
     logging.debug(f"Generated key  {code} for user_id ")
     return code
 
-async def send_verification_code(email: str, user_id: int, locale: Optional[str] = "ua"):
+async def send_verification_code(email: str, user_id: int, locale: Optional[str] = "en"):
     """Надсилає код підтвердження на email, враховуючи локалізацію (ua або en)."""
     
     # Генерація коду підтвердження
@@ -59,7 +59,7 @@ async def send_verification_code(email: str, user_id: int, locale: Optional[str]
     fm = FastMail(conf)
     await fm.send_message(message)
 
-async def send_verification_link(email: str, token: str, locale: Optional[str] = "ua"):
+async def send_verification_link(email: str, token: str, locale: Optional[str] = "en"):
     """
     Надсилає лінк для підтвердження email.
     :param email: Адреса електронної пошти
@@ -112,7 +112,6 @@ async def send_password_change_form(
         email: str,
         subject: str,
         html_content: str,
-        locale: Optional[str] = 'ua'
     ):
     """
     Sends an email with a password change form.

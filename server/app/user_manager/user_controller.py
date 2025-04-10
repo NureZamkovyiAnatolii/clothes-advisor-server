@@ -237,7 +237,7 @@ def create_password_reset_token(email: str, expires_delta: timedelta = timedelta
     """
     to_encode = {"sub": email, "exp": datetime.utcnow() + expires_delta}
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-async def send_password_reset_email(db: Session, email: str, locale: Optional[str] = 'ua'):
+async def send_password_reset_email(db: Session, email: str, locale: Optional[str] = 'en'):
     """
     Sends a password reset form to the user's email after verifying the password.
     
@@ -259,27 +259,40 @@ async def send_password_reset_email(db: Session, email: str, locale: Optional[st
     reset_token = create_password_reset_token(email=email)
 
     # Формуємо посилання для зміни пароля
-    reset_url = f"http://localhost:8000/change-password-form?token={reset_token}"
+    reset_url = f"http://localhost:8000/change-password-form?token={reset_token}&locale={locale}"
 
-    # Створюємо HTML форму для зміни пароля
-    html_content = f"""
-    <html>
-        <body>
-            <h3>Зміна пароля</h3>
-            <p>Щоб змінити пароль, натисніть на посилання нижче:</p>
-            <a href="{reset_url}">Змінити пароль</a>
-            <p>Якщо ви не робили запит на зміну пароля, проігноруйте цей лист.</p>
-        </body>
-    </html>
-    """
+    # Створюємо HTML контент в залежності від мови
+    if locale == 'ua':
+        html_content = f"""
+        <html>
+            <body>
+                <h3>Зміна пароля</h3>
+                <p>Щоб змінити пароль, натисніть на посилання нижче:</p>
+                <a href="{reset_url}">Змінити пароль</a>
+                <p>Якщо ви не робили запит на зміну пароля, проігноруйте цей лист.</p>
+            </body>
+        </html>
+        """
+        subject="Запит на зміну пароля"
+    else:
+        html_content = f"""
+        <html>
+            <body>
+                <h3>Password Change</h3>
+                <p>To change your password, click the link below:</p>
+                <a href="{reset_url}">Change Password</a>
+                <p>If you did not request a password change, please ignore this email.</p>
+            </body>
+        </html>
+        """
+        subject="Password change request"
 
     # Відправка email користувачу
     try:
         await send_password_change_form(
             email=email,
-            subject="Запит на зміну пароля",
-            html_content=html_content,
-            locale=locale
+            subject=subject,
+            html_content=html_content
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")

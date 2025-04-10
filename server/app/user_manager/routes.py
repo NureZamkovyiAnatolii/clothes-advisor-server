@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Form, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -181,10 +182,12 @@ def is_user_activated(user_id: int, db: Session = Depends(get_db)):
             content={"detail": "Internal Server Error"}
         )
 
+
 @user_manager_router.post("/forgot-password", summary="Initiates a password reset process")
 async def forgot_password(
         email: str = Form(...),
-        locale: str = Query('ua'),  # Мова для повідомлення (за замовчуванням українська)
+        # Мова для повідомлення (за замовчуванням українська)
+        locale: str = Query('en'),
         db: Session = Depends(get_db)
 ):
     """
@@ -205,12 +208,12 @@ async def forgot_password(
     try:
         # Викликаємо вже готову функцію для відправки email з формою скидання пароля
         response = await send_password_reset_email(
-            db=db, 
-            email=email,  
+            db=db,
+            email=email,
             locale=locale
         )
         return response
-    
+
     except HTTPException as e:
         # Повертаємо помилки, якщо вони виникають
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
@@ -220,10 +223,11 @@ async def forgot_password(
         return JSONResponse(status_code=500, content={"detail": f"Internal server error: {str(e)}"})
 
 
-@user_manager_router.get("/change-password-form", summary="Gets the password change form for the currently authenticated user", response_class=HTMLResponse)
+@user_manager_router.get("/change-password-form", summary="Gets the password change form for the currently authenticated user", response_class=HTMLResponse, include_in_schema=False)
 async def get_change_password_form_from_forgot_password(
     db: Session = Depends(get_db),
-    token: str = Query()
+    token: str = Query(),
+    locale: Optional[str] = 'en'
 ):
     """
     **Gets the form for changing the password for the currently authenticated user**
@@ -233,70 +237,120 @@ async def get_change_password_form_from_forgot_password(
     try:
         # Отримуємо користувача на основі токену
         current_user = get_current_user(token, db)
-        
-        # Створюємо HTML форму для зміни пароля
-        html_form = f"""
-        <html>
-            <body>
-                <h2>Зміна пароля</h2>
-                <form id="changePasswordForm"action="/change-password-form" method="PUT" onsubmit="handleSubmit(event)">
-                    <label for="new_password">Новий пароль:</label>
-                    <input type="password" id="new_password" name="new_password" required><br><br>
-                    <label for="confirm_password">Підтвердьте новий пароль:</label>
-                    <input type="hidden" id="token" value="{{ token }}">
-                    <input type="password" id="confirm_password" name="confirm_password" required><br><br>
-                    <input type="submit" value="Змінити пароль">
-                </form>
-                 <script>
-            async function handleSubmit(event) {{
-                event.preventDefault(); // Запобігає стандартній відправці форми
-                
-                // Отримання даних з форми
-                const form = document.getElementById("changePasswordForm");
-                const formData = new FormData(form);
-                
-                // Отримуємо токен з хардкоду або вставляємо як з серверу
-                // Отримання параметрів з URL
-                const urlParams = new URLSearchParams(window.location.search);
-                // Отримуємо значення параметра "token"
-                const token = urlParams.get('token');
-                // Перевірка наявності токена
-if (token) {{
-    console.log("Token:", token);
-}} else {{
-    console.log("Token not found in URL.");
-}}
-                // Виконання запиту до серверу
-                try {{
-                    const response = await fetch("/change-password-form?token=" + token, {{
-                        method: "PUT", // Відправляємо запит методом PUT
-                        body: formData
-                    }});
 
-                    if (response.ok) {{
-                        // Якщо зміна пароля успішна, перенаправляємо на сторінку успіху
-                        window.location.href = "/change-password-success";
-                    }} else {{
-                        // Якщо щось пішло не так, вивести повідомлення
-                        alert("Щось пішло не так. Спробуйте ще раз.");
+        if locale == "ua":
+            # Створюємо HTML форму для зміни пароля
+            html_form = f"""
+            <html>
+                <body>
+                    <h2>Зміна пароля</h2>
+                    <form id="changePasswordForm"action="/change-password-form" method="PUT" onsubmit="handleSubmit(event)">
+                        <label for="new_password">Новий пароль:</label>
+                        <input type="password" id="new_password" name="new_password" required><br><br>
+                        <label for="confirm_password">Підтвердьте новий пароль:</label>
+                        <input type="hidden" id="token" value="{{ token }}">
+                        <input type="password" id="confirm_password" name="confirm_password" required><br><br>
+                        <input type="submit" value="Змінити пароль">
+                    </form>
+                    <script>
+                async function handleSubmit(event) {{
+                    event.preventDefault(); // Запобігає стандартній відправці форми
+                    
+                    // Отримання даних з форми
+                    const form = document.getElementById("changePasswordForm");
+                    const formData = new FormData(form);
+                    
+                    // Отримуємо токен з хардкоду або вставляємо як з серверу
+                    // Отримання параметрів з URL
+                    const urlParams = new URLSearchParams(window.location.search);
+                    // Отримуємо значення параметра "token"
+                    const token = urlParams.get('token');
+                    // Перевірка наявності токена
+    if (token) {{
+        console.log("Token:", token);
+    }} else {{
+        console.log("Token not found in URL.");
+    }}
+                    // Виконання запиту до серверу
+                    try {{
+                        const response = await fetch("/change-password-form?token=" + token, {{
+                            method: "PUT", // Відправляємо запит методом PUT
+                            body: formData
+                        }});
+
+                        if (response.ok) {{
+                            // Якщо зміна пароля успішна, перенаправляємо на сторінку успіху
+                            window.location.href = "/change-password-success";
+                        }} else {{
+                            // Якщо щось пішло не так, вивести повідомлення
+                            alert("Щось пішло не так. Спробуйте ще раз.");
+                        }}
+                    }} catch (error) {{
+                        console.error("Error:", error);
+                        alert("Помилка при відправці запиту.");
                     }}
-                }} catch (error) {{
-                    console.error("Error:", error);
-                    alert("Помилка при відправці запиту.");
                 }}
-            }}
-        </script>
-            </body>
-        </html>
+            </script>
+                </body>
+            </html>
 
-        """
+            """
+        else:
+            html_form = f"""
+            <html>
+                <body>
+                    <h2>Password change form</h2>
+                    <form id="changePasswordForm"action="/change-password-form" method="PUT" onsubmit="handleSubmit(event)">
+                        <label for="new_password">New password:</label>
+                        <input type="password" id="new_password" name="new_password" required><br><br>
+                        <label for="confirm_password">Confirm new password:</label>
+                        <input type="hidden" id="token" value="{{ token }}">
+                        <input type="password" id="confirm_password" name="confirm_password" required><br><br>
+                        <input type="submit" value="Submit">
+                    </form>
+                    <script>
+                async function handleSubmit(event) {{
+                    event.preventDefault();
+                    
+                    const form = document.getElementById("changePasswordForm");
+                    const formData = new FormData(form);
+                    
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const token = urlParams.get('token');
+    if (token) {{
+        console.log("Token:", token);
+    }} else {{
+        console.log("Token not found in URL.");
+    }}
+                    try {{
+                        const response = await fetch("/change-password-form?token=" + token, {{
+                            method: "PUT", // Відправляємо запит методом PUT
+                            body: formData
+                        }});
+
+                        if (response.ok) {{
+                            window.location.href = "/change-password-success";
+                        }} else {{
+                            alert("Щось пішло не так. Спробуйте ще раз.");
+                        }}
+                    }} catch (error) {{
+                        console.error("Error:", error);
+                        alert("Помилка при відправці запиту.");
+                    }}
+                }}
+            </script>
+                </body>
+            </html>
+
+            """
         return HTMLResponse(content=html_form)
 
     except Exception as e:
         logging.error(f"Error getting password change form: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@user_manager_router.put("/change-password-form", summary="Changes the password for the currently authenticated user")
+
+@user_manager_router.put("/change-password-form", summary="Changes the password for the currently authenticated user", include_in_schema=False)
 async def change_password_form_from_forgot_password(
     db: Session = Depends(get_db),
     token: str = Query(...),
@@ -305,14 +359,15 @@ async def change_password_form_from_forgot_password(
 ):
     """
     **Changes the password for the currently authenticated user after form submission**
-    
+
     - **Headers**: `Authorization: Bearer <token>`
     - **Parameters**: `current_password`, `new_password`, `confirm_password`
     """
     try:
         # Перевірка чи новий пароль та підтвердження пароля співпадають
         if new_password != confirm_password:
-            raise HTTPException(status_code=400, detail="New password and confirm password do not match")
+            raise HTTPException(
+                status_code=400, detail="New password and confirm password do not match")
 
         # Отримуємо користувача на основі токену
         current_user = get_current_user(token, db)
@@ -321,24 +376,29 @@ async def change_password_form_from_forgot_password(
         raise e
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")          
+        raise HTTPException(status_code=500, detail="Internal server error")
 
         # Пошук користувача за ID
     user = db.query(User).filter(User.id == current_user.id).first()
-    
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    # Оновлюємо пароль (можливо, потрібно зашифрувати пароль перед збереженням)
-    user.password = hash_password(new_password)  # Увага: тут потрібно зашифрувати пароль
-    db.commit()
 
+    # Оновлюємо пароль (можливо, потрібно зашифрувати пароль перед збереженням)
+    # Увага: тут потрібно зашифрувати пароль
+    user.password = hash_password(new_password)
+    db.commit()
 
     return RedirectResponse(url="/change-password-success", status_code=303)
 
-@user_manager_router.get("/change-password-success", summary="Success page for password change", response_class=HTMLResponse)
-async def change_password_success():
-    return HTMLResponse(content="<html><body><h2>Пароль успішно змінено!</h2></body></html>")
+
+@user_manager_router.get("/change-password-success", summary="Success page for password change", response_class=HTMLResponse, include_in_schema=False)
+async def change_password_success(locale: Optional[str] = 'en'):
+    if locale=="ua":
+        return HTMLResponse(content="<html><body><h2>Пароль успішно змінено!</h2></body></html>")
+    else:
+        return HTMLResponse(content="<html><body><h2>Password changed!</h2></body></html>")
+
 
 @user_manager_router.put("/change-password", summary="Changes the password for the currently authenticated user")
 def change_password(
@@ -401,4 +461,3 @@ async def change_email(
     except Exception as e:
         logging.error(f"Unexpected error: {str(e)}")
         return JSONResponse(status_code=500, content={"detail": "Internal server error"})
-
