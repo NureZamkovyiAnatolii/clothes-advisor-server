@@ -5,8 +5,9 @@ from app.database import get_db
 from PIL import Image
 from io import BytesIO
 from colorthief import ColorThief
-from app.user_manager.user_controller import get_current_user_id, oauth2_scheme
-from app.close_manager.clothing_controller import add_clothing_item_to_db, save_file
+from app.user_manager.user_controller import get_current_user, get_current_user_id, oauth2_scheme
+from app.close_manager.clothing_controller import add_clothing_item_to_db, mark_clothing_item_as_favorite, save_file
+from app.user_manager.user import User
 
 close_router = APIRouter(tags=["Close Operations"])
 
@@ -123,3 +124,12 @@ async def add_clothing_item(
             "owner_id": new_clothing_item.owner_id,
         }
     }
+
+# @close_router.post("/items/{item_id}/favorite", response_model=None)
+# def favorite_item(
+#     item_id: int,
+#     db: Session = Depends(get_db),
+#     current_user: User = Depends(get_current_user)
+# ):
+#     updated_item = mark_clothing_item_as_favorite(db, item_id, current_user.id)
+#     return {"message": "Item marked as favorite", "item": updated_item.id}

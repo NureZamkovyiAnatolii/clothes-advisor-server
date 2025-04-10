@@ -1,12 +1,12 @@
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Form, HTTPException, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.user_manager.user import User
-from .user_controller import ALGORITHM, SECRET_KEY, create_user, authenticate_user, get_current_user, is_user_verified, oauth2_scheme, update_user_email, update_user_password
+from .user_controller import ALGORITHM, SECRET_KEY, create_user, authenticate_user, get_current_user, hash_password, is_user_verified, oauth2_scheme, send_password_reset_email, update_user_email, update_user_password
 import logging
 
 user_manager_router = APIRouter(tags=["Users"])
@@ -181,13 +181,171 @@ def is_user_activated(user_id: int, db: Session = Depends(get_db)):
             content={"detail": "Internal Server Error"}
         )
 
+@user_manager_router.post("/forgot-password", summary="Initiates a password reset process")
+async def forgot_password(
+        email: str = Form(...),
+        locale: str = Query('ua'),  # Мова для повідомлення (за замовчуванням українська)
+        db: Session = Depends(get_db)
+):
+    """
+    **Initiates the password reset process for the user**
+
+    - **Parameters**:
+        - `email`: The email address associated with the account.
+        - `password`: The current password of the user.
+        - `locale`: Language for the confirmation message. Options: 'ua' for Ukrainian, 'en' for English.
+
+    - **Response**:
+        - `200 OK`: Password reset link sent successfully.
+        - `400 Bad Request`: Invalid email format.
+        - `404 Not Found`: User not found.
+        - `500 Internal Server Error`: Unexpected server error.
+    """
+
+    try:
+        # Викликаємо вже готову функцію для відправки email з формою скидання пароля
+        response = await send_password_reset_email(
+            db=db, 
+            email=email,  
+            locale=locale
+        )
+        return response
+    
+    except HTTPException as e:
+        # Повертаємо помилки, якщо вони виникають
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+
+    except Exception as e:
+        # Обробка загальних помилок
+        return JSONResponse(status_code=500, content={"detail": f"Internal server error: {str(e)}"})
+
+
+@user_manager_router.get("/change-password-form", summary="Gets the password change form for the currently authenticated user", response_class=HTMLResponse)
+async def get_change_password_form_from_forgot_password(
+    db: Session = Depends(get_db),
+    token: str = Query()
+):
+    """
+    **Gets the form for changing the password for the currently authenticated user**
+
+    - **Headers**: `Authorization: Bearer <token>`
+    """
+    try:
+        # Отримуємо користувача на основі токену
+        current_user = get_current_user(token, db)
+        
+        # Створюємо HTML форму для зміни пароля
+        html_form = f"""
+        <html>
+            <body>
+                <h2>Зміна пароля</h2>
+                <form id="changePasswordForm"action="/change-password-form" method="PUT" onsubmit="handleSubmit(event)">
+                    <label for="new_password">Новий пароль:</label>
+                    <input type="password" id="new_password" name="new_password" required><br><br>
+                    <label for="confirm_password">Підтвердьте новий пароль:</label>
+                    <input type="hidden" id="token" value="{{ token }}">
+                    <input type="password" id="confirm_password" name="confirm_password" required><br><br>
+                    <input type="submit" value="Змінити пароль">
+                </form>
+                 <script>
+            async function handleSubmit(event) {{
+                event.preventDefault(); // Запобігає стандартній відправці форми
+                
+                // Отримання даних з форми
+                const form = document.getElementById("changePasswordForm");
+                const formData = new FormData(form);
+                
+                // Отримуємо токен з хардкоду або вставляємо як з серверу
+                // Отримання параметрів з URL
+                const urlParams = new URLSearchParams(window.location.search);
+                // Отримуємо значення параметра "token"
+                const token = urlParams.get('token');
+                // Перевірка наявності токена
+if (token) {{
+    console.log("Token:", token);
+}} else {{
+    console.log("Token not found in URL.");
+}}
+                // Виконання запиту до серверу
+                try {{
+                    const response = await fetch("/change-password-form?token=" + token, {{
+                        method: "PUT", // Відправляємо запит методом PUT
+                        body: formData
+                    }});
+
+                    if (response.ok) {{
+                        // Якщо зміна пароля успішна, перенаправляємо на сторінку успіху
+                        window.location.href = "/change-password-success";
+                    }} else {{
+                        // Якщо щось пішло не так, вивести повідомлення
+                        alert("Щось пішло не так. Спробуйте ще раз.");
+                    }}
+                }} catch (error) {{
+                    console.error("Error:", error);
+                    alert("Помилка при відправці запиту.");
+                }}
+            }}
+        </script>
+            </body>
+        </html>
+
+        """
+        return HTMLResponse(content=html_form)
+
+    except Exception as e:
+        logging.error(f"Error getting password change form: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@user_manager_router.put("/change-password-form", summary="Changes the password for the currently authenticated user")
+async def change_password_form_from_forgot_password(
+    db: Session = Depends(get_db),
+    token: str = Query(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+):
+    """
+    **Changes the password for the currently authenticated user after form submission**
+    
+    - **Headers**: `Authorization: Bearer <token>`
+    - **Parameters**: `current_password`, `new_password`, `confirm_password`
+    """
+    try:
+        # Перевірка чи новий пароль та підтвердження пароля співпадають
+        if new_password != confirm_password:
+            raise HTTPException(status_code=400, detail="New password and confirm password do not match")
+
+        # Отримуємо користувача на основі токену
+        current_user = get_current_user(token, db)
+    except HTTPException as e:
+        logging.error(f"Error in password change: {e.detail}")
+        raise e
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")          
+
+        # Пошук користувача за ID
+    user = db.query(User).filter(User.id == current_user.id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Оновлюємо пароль (можливо, потрібно зашифрувати пароль перед збереженням)
+    user.password = hash_password(new_password)  # Увага: тут потрібно зашифрувати пароль
+    db.commit()
+
+
+    return RedirectResponse(url="/change-password-success", status_code=303)
+
+@user_manager_router.get("/change-password-success", summary="Success page for password change", response_class=HTMLResponse)
+async def change_password_success():
+    return HTMLResponse(content="<html><body><h2>Пароль успішно змінено!</h2></body></html>")
 
 @user_manager_router.put("/change-password", summary="Changes the password for the currently authenticated user")
 def change_password(
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
-    old_password: str = Form(...),
-    new_password: str = Form(...)
+    old_password: str = Query(...),
+    new_password: str = Query(...)
 ):
     """
     **Changes the password for the currently authenticated user**
@@ -218,29 +376,23 @@ def change_password(
 
 
 @user_manager_router.put("/change-email", summary="Changes the email for the currently authenticated user")
-def change_email(
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme),
-    password: str = Form(...),
-    new_email: str = Form(...)
-):
+async def change_email(
+        db: Session = Depends(get_db),
+        token: str = Depends(oauth2_scheme),
+        password: str = Form(...),
+        new_email: str = Form(...),
+        locale: str = Query('ua')):
     """
     **Changes the email for the currently authenticated user**
-
-    - **Headers**: `Authorization: Bearer <token>`
-    - **Parameters**:
-        - `password`: Current password.
-        - `new_email`: New email.
-    - **Response**:
-        - `200 OK`: Email changed successfully.
-        - `400 Bad Request`: Incorrect password.
-        - `401 Unauthorized`: User is not authenticated.
     """
-
     try:
         current_user = get_current_user(token, db)
-        result = update_user_email(db, current_user, password, new_email)
-        return JSONResponse(status_code=200, content=result)
+        if current_user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        logging.debug(current_user.email)
+        result = await update_user_email(
+            db, current_user, password, new_email, locale)
+        return result  # Просто повертаємо результат з update_user_email
 
     except HTTPException as e:
         logging.error(f"Error updating email: {e.detail}")
@@ -249,3 +401,4 @@ def change_email(
     except Exception as e:
         logging.error(f"Unexpected error: {str(e)}")
         return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+

@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 import bcrypt
 from fastapi.responses import JSONResponse
 import jwt
@@ -11,7 +12,7 @@ from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi.security import OAuth2PasswordBearer
 
-from app.user_manager.mail_controller import send_verification_code, send_verification_link
+from app.user_manager.mail_controller import send_password_change_form, send_verification_code, send_verification_link
 from .user import User
 
 # Налаштування логування
@@ -223,8 +224,67 @@ def is_user_verified(user_id, db: Session) -> bool:
     user = db.query(User).filter(User.id == user_id).first()
     return user is not None and user.is_email_verified
 
-# Function to update the user's password
+# Functions to update the user's password
+def create_password_reset_token(email: str, expires_delta: timedelta = timedelta(hours=1)) -> str:
+    """
+    Creates a password reset token.
 
+    - **Parameters**:
+        - `email`: User's email address.
+        - `expires_delta`: Expiration time for the token.
+
+    - **Returns**: JWT token for password reset.
+    """
+    to_encode = {"sub": email, "exp": datetime.utcnow() + expires_delta}
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+async def send_password_reset_email(db: Session, email: str, locale: Optional[str] = 'ua'):
+    """
+    Sends a password reset form to the user's email after verifying the password.
+    
+    - **Parameters**:
+        - `db`: Database session.
+        - `email`: User's email address.
+        - `locale`: The language for the reset message ('ua' for Ukrainian, 'en' for English).
+    - **Raises**:
+        - HTTPException: If the email doesn't exist or the password is incorrect.
+    """
+    # Перевірка, чи є користувач з вказаним email
+    user = db.query(User).filter(User.email == email).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+
+    # Створення токену для скидання пароля
+    reset_token = create_password_reset_token(email=email)
+
+    # Формуємо посилання для зміни пароля
+    reset_url = f"http://localhost:8000/change-password-form?token={reset_token}"
+
+    # Створюємо HTML форму для зміни пароля
+    html_content = f"""
+    <html>
+        <body>
+            <h3>Зміна пароля</h3>
+            <p>Щоб змінити пароль, натисніть на посилання нижче:</p>
+            <a href="{reset_url}">Змінити пароль</a>
+            <p>Якщо ви не робили запит на зміну пароля, проігноруйте цей лист.</p>
+        </body>
+    </html>
+    """
+
+    # Відправка email користувачу
+    try:
+        await send_password_change_form(
+            email=email,
+            subject="Запит на зміну пароля",
+            html_content=html_content,
+            locale=locale
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+
+    return {"detail": "Password reset email sent successfully."}
 
 def update_user_password(db: Session, user: User, old_password: str, new_password: str):
     """
@@ -248,21 +308,43 @@ def update_user_password(db: Session, user: User, old_password: str, new_passwor
 # Function to update the user's email
 
 
-def update_user_email(db: Session, user: User, password: str, new_email: str):
+async def update_user_email(db: Session, user: User, password: str, new_email: str, locale: str):
     """
     Updates the user's email after verifying the password.
-
-    :param db: Database session
-    :param user: The current user (User object)
-    :param password: The user's current password
-    :param new_email: The new email address for the user
-    :raises HTTPException: If the password is incorrect
-    :return: A message confirming the successful email change
     """
     if not verify_password(password, user.password):
         raise HTTPException(status_code=400, detail="Incorrect password")
+    try:
+        # Перевірка формату email
+        email_regex = r"(^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$)"
+        if not re.match(email_regex, new_email):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid email format"
+            )
 
+        # Перевірка, чи email вже існує в базі
+        test_user = db.query(User).filter(User.email == new_email).first()
+        if test_user:
+            raise HTTPException(
+                status_code=400,
+                detail="Email is already taken"
+            )
+        logging.error(f"Updating email from { user.email} to  {new_email}")
+        # Створення токену доступу
+        token = create_access_token(
+            {"sub": new_email}, expires_delta=timedelta(hours=24))
+
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Database error"
+        )
     user.email = new_email
+    user.is_email_verified = False
     db.commit()
+    # Надсилання посилання для підтвердження електронної пошти
+    await send_verification_link(new_email, token, locale)
 
-    return {"detail": "Email successfully updated", "data": ""}
+    return {"detail": "Email successfully updated. Please verify new email", "data": ""}

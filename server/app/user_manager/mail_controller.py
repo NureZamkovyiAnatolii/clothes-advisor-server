@@ -4,6 +4,7 @@ import logging
 import random
 import string
 from typing import Optional
+from fastapi import HTTPException
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema
 from requests import Session
 
@@ -106,3 +107,38 @@ async def verify_code(user_id: int, code: str, db: Session) -> bool:
             return True
     logging.debug(f"Невірний код або користувача {user_id} не знайдено")
     return False
+
+async def send_password_change_form(
+        email: str,
+        subject: str,
+        html_content: str,
+        locale: Optional[str] = 'ua'
+    ):
+    """
+    Sends an email with a password change form.
+
+    - **Parameters**:
+        - `email`: Recipient's email address.
+        - `subject`: Subject of the email.
+        - `html_content`: The HTML content for the email body.
+        - `locale`: The language of the email content (default is 'ua').
+
+    This function sends an email using FastMail service.
+    """
+    message = MessageSchema(
+        subject=subject,
+        recipients=[email],
+        body=html_content,
+        subtype="html",
+        charset="utf-8"
+    )
+
+    # Використовуємо FastMail для відправки email
+    fm = FastMail(conf)
+
+    try:
+        await fm.send_message(message)
+        return {"detail": "Password reset email sent successfully."}
+    except Exception as e:
+        # Логування або обробка помилок
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
