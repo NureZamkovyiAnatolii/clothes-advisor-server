@@ -1,12 +1,15 @@
 import os
 import uuid
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.close_manager.сlothing_item import ClothingItem
 from datetime import datetime
 
 # Директорія для зберігання файлів
 UPLOAD_DIR = "uploads"
+MAX_FILE_SIZE_MB = 5
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
@@ -19,7 +22,12 @@ def save_file(file):
     file_extension = file.filename.split('.')[-1]
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
-
+    # Перевірка розміру
+    if len(file.file.read()) > MAX_FILE_SIZE_BYTES:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": f"Файл перевищує {MAX_FILE_SIZE_MB} МБ."}
+        )
     with open(file_path, "wb") as f:
         f.write(file.file.read())
 
