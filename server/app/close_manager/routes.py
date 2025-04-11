@@ -41,7 +41,6 @@ def get_user_clothing_items(
         item.filename =f"{SERVER_URL}/uploads/"+  item.filename
     result = {}
     for idx, item in enumerate(items, start=1):
-        item.filename = f"{SERVER_URL}/uploads/{item.filename}"
         result[f"item_{idx}"] = item
 
     return {
