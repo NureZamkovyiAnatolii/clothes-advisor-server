@@ -1,6 +1,7 @@
 
 # Конфігурація SMTP
 import logging
+import os
 import random
 import string
 from typing import Optional
@@ -10,7 +11,7 @@ from requests import Session
 
 from app.user_manager.user import User
 
-
+SERVER_URL = os.getenv("SERVER_URL")
 conf = ConnectionConfig(
     MAIL_USERNAME="clothesadvisor0@gmail.com",
     MAIL_PASSWORD="juyn xudt moyv uwcx",
@@ -66,7 +67,7 @@ async def send_verification_link(email: str, token: str, locale: Optional[str] =
     :param token: Токен підтвердження
     :param locale: Локалізація повідомлення
     """
-    verification_url = f"http://127.0.0.1:8000/verify_email?token={token}"
+    verification_url = f"{SERVER_URL}/verify_email?token={token}"
 
     if locale == "en":
         subject = "Email verification"

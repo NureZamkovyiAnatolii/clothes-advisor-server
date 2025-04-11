@@ -22,6 +22,7 @@ logging.basicConfig(level=logging.DEBUG)
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "supersecretkey")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Час життя токену
+SERVER_URL = os.getenv("SERVER_URL")
 
 # FastAPI security scheme (очікує токен у заголовку Authorization)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -259,7 +260,7 @@ async def send_password_reset_email(db: Session, email: str, locale: Optional[st
     reset_token = create_password_reset_token(email=email)
 
     # Формуємо посилання для зміни пароля
-    reset_url = f"http://localhost:8000/change-password-form?token={reset_token}&locale={locale}"
+    reset_url = f"{SERVER_URL}/change-password-form?token={reset_token}&locale={locale}"
 
     # Створюємо HTML контент в залежності від мови
     if locale == 'ua':

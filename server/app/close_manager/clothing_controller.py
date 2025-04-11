@@ -105,3 +105,24 @@ def mark_clothing_item_as_favorite(
     db.refresh(item)
 
     return item
+
+def mark_clothing_item_as_unfavorite(
+    db: Session,
+    item_id: int,
+    owner_id: int
+) -> ClothingItem:
+    # Знаходимо елемент за ID та власником
+    item = db.query(ClothingItem).filter(
+        ClothingItem.id == item_id,
+        ClothingItem.owner_id == owner_id
+    ).first()
+
+    if not item:
+        raise HTTPException(status_code=404, detail="Clothing item not found")
+
+    
+    item.is_favorite = False
+    db.commit()
+    db.refresh(item)
+
+    return item

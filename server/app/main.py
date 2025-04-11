@@ -1,4 +1,6 @@
+import os
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from app.routes import router
 from app.user_manager.routes import user_manager_router  # Import routes
 from app.close_manager.routes import close_router
@@ -27,7 +29,7 @@ try:
     # Add routes from the user_manager module
     app.include_router(user_manager_router)
     app.include_router(close_router)
-    
+    app.mount("/uploads", StaticFiles(directory=os.path.abspath("uploads")), name="uploads")
 
     @app.get("/", tags=["Ping"])
     def read_root():
