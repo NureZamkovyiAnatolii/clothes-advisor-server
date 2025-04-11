@@ -39,7 +39,15 @@ def get_user_clothing_items(
     items = db.query(ClothingItem).filter(ClothingItem.owner_id == user_id).all()
     for item in items:
         item.filename =f"{SERVER_URL}/uploads/"+  item.filename
-    return items
+    result = {}
+    for idx, item in enumerate(items, start=1):
+        item.filename = f"{SERVER_URL}/uploads/{item.filename}"
+        result[f"item_{idx}"] = item
+
+    return {
+        "detail": "Clothing items fetched successfully.",
+        "data": result
+    }
 
 @close_router.post("/add-clothing-item", summary="Add a new clothing item")
 async def add_clothing_item(
