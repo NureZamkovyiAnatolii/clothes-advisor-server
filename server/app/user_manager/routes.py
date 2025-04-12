@@ -63,6 +63,15 @@ def login_with_email(
     db: Session = Depends(get_db)
 ):
     result = authenticate_user(db, email, password)
+    user = db.query(User).filter(User.email == email).first()
+    if user.is_email_verified == False:
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": "Email not verified",
+                "data": None
+            }
+        )
 
     # Якщо це JSONResponse — тобто помилка, просто повертаємо її
     if isinstance(result, JSONResponse):
@@ -404,8 +413,8 @@ async def change_password_success(locale: Optional[str] = 'en'):
 def change_password(
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
-    old_password: str = Query(...),
-    new_password: str = Query(...)
+    old_password: str = Form(...),
+    new_password: str = Form(...)
 ):
     """
     **Changes the password for the currently authenticated user**
