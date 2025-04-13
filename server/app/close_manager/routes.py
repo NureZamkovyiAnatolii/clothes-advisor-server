@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -7,11 +7,11 @@ from PIL import Image
 from io import BytesIO
 from colorthief import ColorThief
 from app.user_manager.user_controller import get_current_user, get_current_user_id, oauth2_scheme
-from app.close_manager.clothing_controller import add_clothing_item_to_db, mark_clothing_item_as_favorite, mark_clothing_item_as_unfavorite, save_file
+from app.close_manager.clothing_controller import add_clothing_item_to_db, create_combination_in_db, get_all_combinations_for_user, mark_clothing_item_as_favorite, mark_clothing_item_as_unfavorite, save_file
 from app.user_manager.user import User
 from app.close_manager.сlothing_item import ClothingItem
 
-close_router = APIRouter(tags=["Close Operations"])
+clothing_router = APIRouter(tags=["Close Operations"])
 # Тепер можеш використати змінну
 SERVER_URL = os.getenv("SERVER_URL")
 
@@ -27,7 +27,7 @@ def get_dominant_color(file: UploadFile):
     color_thief = ColorThief(buffer)
     return color_thief.get_color(quality=1)  # (R, G, B)
 
-@close_router.get("/clothing-items")
+@clothing_router.get("/clothing-items")
 def get_user_clothing_items(
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
@@ -48,7 +48,7 @@ def get_user_clothing_items(
         "data": result
     }
 
-@close_router.post("/add-clothing-item", summary="Add a new clothing item")
+@clothing_router.post("/add-clothing-item", summary="Add a new clothing item")
 async def add_clothing_item(
     file: UploadFile = File(...),  # Upload image
     name: str = Form(...),
@@ -148,7 +148,7 @@ async def add_clothing_item(
         }
     }
 
-@close_router.post("/items/{item_id}/favorite", response_model=None)
+@clothing_router.post("/items/{item_id}/favorite", response_model=None)
 def favorite_item(
     item_id: int,
     db: Session = Depends(get_db),
@@ -158,7 +158,7 @@ def favorite_item(
     updated_item = mark_clothing_item_as_favorite(db, item_id, current_user.id)
     return {"message": "Item marked as favorite", "item": updated_item.id}
 
-@close_router.post("/items/{item_id}/unfavorite", response_model=None)
+@clothing_router.post("/items/{item_id}/unfavorite", response_model=None)
 def favorite_item(
     item_id: int,
     db: Session = Depends(get_db),
@@ -168,3 +168,36 @@ def favorite_item(
     updated_item = mark_clothing_item_as_unfavorite(db, item_id, current_user.id)
     return {"message": "Item marked as unfavorite", "item": updated_item.id}
 
+@clothing_router.get("/clothing-combinations")
+def get_user_combinations(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    data = get_all_combinations_for_user(db, token)
+    return {
+        "detail": "Clothing combinations fetched successfully.",
+        "data": data
+    }
+
+@clothing_router.post("/clothing-combinations")
+def create_clothing_combination(
+    name: str = Form(...),
+    item_ids: List[int] = Form(...),
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    user_id = get_current_user_id(token, db)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    combination = create_combination_in_db(
+        db=db,
+        name=name,
+        item_ids=item_ids,
+        owner_id=user_id
+    )
+
+    return {
+        "detail": "Clothing combination created successfully.",
+        "combination_id": combination.id
+    }

@@ -6,6 +6,10 @@ from sqlalchemy.orm import Session
 from app.close_manager.сlothing_item import ClothingItem
 from datetime import datetime
 
+from app.close_manager.clothing_combination import ClothingCombination
+from app.user_manager.mail_controller import SERVER_URL
+from app.user_manager.user_controller import get_current_user_id
+
 # Директорія для зберігання файлів
 UPLOAD_DIR = "uploads"
 MAX_FILE_SIZE_MB = 5
@@ -126,3 +130,66 @@ def mark_clothing_item_as_unfavorite(
     db.refresh(item)
 
     return item
+
+def get_all_combinations_for_user(
+    db: Session,
+    token: str
+) -> list[dict]:
+    user_id = get_current_user_id(token, db)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    combinations = db.query(ClothingCombination).filter_by(owner_id=user_id).all()
+    result = []
+
+    for combo in combinations:
+        items = [
+            {
+                "id": item.id,
+                "name": item.name,
+                "category": item.category,
+                "season": item.season,
+                "red": item.red,
+                "green": item.green,
+                "blue": item.blue,
+                "material": item.material,
+                "brand": item.brand,
+                "price": item.price,
+                "is_favorite": item.is_favorite,
+                "filename": f"{SERVER_URL}/uploads/{item.filename}"
+            }
+            for item in combo.items
+        ]
+        result.append({
+            "name": combo.name,
+            "items": items
+        })
+
+    return result
+
+def create_combination_in_db(
+    db: Session,
+    name: str,
+    item_ids: list[int],
+    owner_id: int
+) -> ClothingCombination:
+
+    items = db.query(ClothingItem).filter(
+        ClothingItem.id.in_(item_ids),
+        ClothingItem.owner_id == owner_id
+    ).all()
+
+    if len(items) != len(item_ids):
+        raise HTTPException(status_code=400, detail="Some items not found or don't belong to user.")
+
+    combination = ClothingCombination(
+        name=name,
+        owner_id=owner_id,
+        items=items
+    )
+
+    db.add(combination)
+    db.commit()
+    db.refresh(combination)
+
+    return combination

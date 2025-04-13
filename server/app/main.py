@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from app.routes import router
 from app.user_manager.routes import user_manager_router  # Import routes
-from app.close_manager.routes import close_router
+from app.close_manager.routes import clothing_router
 # from app.photo_manager.routes import photo_router  # Import routes
 from .database import engine
 import logging
@@ -28,7 +28,7 @@ try:
 
     # Add routes from the user_manager module
     app.include_router(user_manager_router)
-    app.include_router(close_router)
+    app.include_router(clothing_router)
     app.mount("/uploads", StaticFiles(directory=os.path.abspath("uploads")), name="uploads")
 
     @app.get("/", tags=["Ping"])
