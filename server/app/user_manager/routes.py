@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, Form, HTTPException, Query
@@ -19,7 +20,7 @@ async def register(
     email: str = Form(...),
     password: str = Form(...),
     locale: str = Query(
-        'ua', description="Language for the confirmation message. Options: 'ua' for Ukrainian, 'en' for English.")
+        'en', description="Language for the confirmation message. Options: 'ua' for Ukrainian, 'en' for English.")
 ):
     response = await create_user(db, email, password, locale)
     logging.debug(f"Retrieved response: {response}")
@@ -168,11 +169,38 @@ def get_profile(token: str = Depends(oauth2_scheme), db: Session = Depends(get_d
             "detail": "User retrieved successfully",
             "data": {
                 "id": current_user.id,
-                "email": current_user.email
+                "email": current_user.email,
+                "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None
+
             }
         }
     )
 
+@user_manager_router.post("/synchronize")
+def synchronize_user_data(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    logging.debug("Received request for synchronization with token: %s",
+                  token)
+    current_user = get_current_user(token, db)
+
+    # Якщо current_user є JSONResponse (помилка в get_current_user), то просто повертаємо його
+    if isinstance(current_user, JSONResponse):
+        return current_user  # Повертаємо JSONResponse помилки
+
+    # Логування знайденого користувача
+    logging.debug("User found: %s", current_user.email)
+    current_user.synchronized_at = datetime.now(timezone.utc)
+    db.commit()
+    return JSONResponse(
+    status_code=200,
+    content={
+        "detail": "Synchronized data updated",
+        "data": {
+            "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None
+        }
+    }
+)
+
+    
 
 @user_manager_router.get("/is_activated")
 def is_user_activated(user_id: int, db: Session = Depends(get_db)):

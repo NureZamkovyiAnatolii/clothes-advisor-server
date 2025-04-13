@@ -10,7 +10,9 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     password = Column(String(255), unique=False, nullable=False)
     created_at = Column(DateTime, default=datetime.now(timezone.utc))  # Час створення
+    synchronized_at  = Column(DateTime, default=datetime.now(timezone.utc))  # Час створення
     is_email_verified = Column(Boolean, default=False)  
+    
 
     combinations = relationship("ClothingCombination", back_populates="owner")
 

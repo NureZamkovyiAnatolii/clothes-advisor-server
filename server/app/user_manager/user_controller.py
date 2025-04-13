@@ -93,7 +93,7 @@ async def create_user(db: Session, email: str, password: str, locale: str):
         return JSONResponse(
             status_code=201,
             content={
-                "detail": "Authentication successful",
+                "detail": "Resister successful. Please verify your email",
                 "data": {
                     "access_token": token,
                     "token_type": "bearer"

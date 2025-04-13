@@ -110,6 +110,7 @@ def mark_clothing_item_as_favorite(
 
     return item
 
+
 def mark_clothing_item_as_unfavorite(
     db: Session,
     item_id: int,
@@ -124,12 +125,12 @@ def mark_clothing_item_as_unfavorite(
     if not item:
         raise HTTPException(status_code=404, detail="Clothing item not found")
 
-    
     item.is_favorite = False
     db.commit()
     db.refresh(item)
 
     return item
+
 
 def get_all_combinations_for_user(
     db: Session,
@@ -139,7 +140,8 @@ def get_all_combinations_for_user(
     if not user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    combinations = db.query(ClothingCombination).filter_by(owner_id=user_id).all()
+    combinations = db.query(ClothingCombination).filter_by(
+        owner_id=user_id).all()
     result = []
 
     for combo in combinations:
@@ -167,6 +169,7 @@ def get_all_combinations_for_user(
 
     return result
 
+
 def create_combination_in_db(
     db: Session,
     name: str,
@@ -180,7 +183,8 @@ def create_combination_in_db(
     ).all()
 
     if len(items) != len(item_ids):
-        raise HTTPException(status_code=400, detail="Some items not found or don't belong to user.")
+        raise HTTPException(
+            status_code=400, detail="Some items not found or don't belong to user.")
 
     combination = ClothingCombination(
         name=name,
