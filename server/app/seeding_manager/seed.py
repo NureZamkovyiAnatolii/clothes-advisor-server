@@ -14,17 +14,17 @@ def seed_users(db: Session):
     users_data = [
         {
             "email": "test@gmail.com",
-            "password": "123",  
+            "password": "pass",  
             "is_email_verified": True
         },
         {
             "email": "bob@example.com",
-            "password": "1232",
+            "password": "pass",
             "is_email_verified": False
         },
         {
             "email": "charlie@example.com",
-            "password": "123",
+            "password": "pass",
             "is_email_verified": True
         }
     ]
