@@ -8,6 +8,8 @@ import jwt
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.user_manager.user import User
+from app.close_manager.clothing_combination import ClothingCombination
+from app.close_manager.сlothing_item import ClothingItem
 from .user_controller import ALGORITHM, SECRET_KEY, create_user, authenticate_user, get_current_user, hash_password, is_user_verified, oauth2_scheme, send_password_reset_email, update_user_email, update_user_password
 import logging
 
@@ -64,15 +66,6 @@ def login_with_email(
     db: Session = Depends(get_db)
 ):
     result = authenticate_user(db, email, password)
-    user = db.query(User).filter(User.email == email).first()
-    if user.is_email_verified == False:
-        return JSONResponse(
-            status_code=403,
-            content={
-                "detail": "Email not verified",
-                "data": None
-            }
-        )
 
     # Якщо це JSONResponse — тобто помилка, просто повертаємо її
     if isinstance(result, JSONResponse):
@@ -175,32 +168,8 @@ def get_profile(token: str = Depends(oauth2_scheme), db: Session = Depends(get_d
             }
         }
     )
-
-@user_manager_router.post("/synchronize")
-def synchronize_user_data(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    logging.debug("Received request for synchronization with token: %s",
-                  token)
-    current_user = get_current_user(token, db)
-
-    # Якщо current_user є JSONResponse (помилка в get_current_user), то просто повертаємо його
-    if isinstance(current_user, JSONResponse):
-        return current_user  # Повертаємо JSONResponse помилки
-
-    # Логування знайденого користувача
-    logging.debug("User found: %s", current_user.email)
-    current_user.synchronized_at = datetime.now(timezone.utc)
-    db.commit()
-    return JSONResponse(
-    status_code=200,
-    content={
-        "detail": "Synchronized data updated",
-        "data": {
-            "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None
-        }
-    }
-)
-
     
+
 
 @user_manager_router.get("/is_activated")
 def is_user_activated(user_id: int, db: Session = Depends(get_db)):
@@ -219,6 +188,70 @@ def is_user_activated(user_id: int, db: Session = Depends(get_db)):
             content={"detail": "Internal Server Error"}
         )
 
+@user_manager_router.post("/syncronize")
+def sync_data(payload: dict, db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
+    items_data = payload.get("clothing_items", [])
+    combos_data = payload.get("clothing_combinations", [])
+
+    current_user = get_current_user(token, db)
+    # 1. Видалити старі речі та комбінації користувача
+    old_combos = db.query(ClothingCombination).filter_by(owner_id=current_user.id).all()
+    for combo in old_combos:
+        combo.items.clear()  # очищає many-to-many зв'язки
+        db.delete(combo)
+
+    old_items = db.query(ClothingItem).filter_by(owner_id=current_user.id).all()
+    for item in old_items:
+        db.delete(item)
+
+    db.commit()
+    print(f"🧹 Cleared old items and combinations for user {current_user.email}")
+
+    # 2. Додати нові речі
+    new_items = []
+    for item in items_data:
+        # Видаляємо owner_id із словника, якщо він там є, щоб уникнути конфлікту
+        item_data_cleaned = {k: v for k, v in item.items() if k != "owner_id"}
+
+        # Створюємо новий об'єкт речі з прив'язкою до поточного користувача
+        new_item = ClothingItem(**item_data_cleaned, owner_id=current_user.id)
+
+        # Додаємо до сесії
+        db.add(new_item)
+        new_items.append(new_item)
+
+    db.commit()
+
+    # 3. Додати нові комбінації
+    for combo in combos_data:
+        new_combo = ClothingCombination(name=combo["name"], owner_id=current_user.id)
+        db.add(new_combo)
+        db.commit()  # щоб combo.id був доступний
+
+        for filename in combo["item_filenames"]:
+            item = db.query(ClothingItem).filter_by(filename=filename, owner_id=current_user.id).first()
+            if item:
+                new_combo.items.append(item)
+
+        db.commit()
+    current_user = get_current_user(token, db)
+
+    # Якщо current_user є JSONResponse (помилка в get_current_user), то просто повертаємо його
+    if isinstance(current_user, JSONResponse):
+        return current_user  # Повертаємо JSONResponse помилки
+
+    # Логування знайденого користувача
+    logging.debug("User found: %s", current_user.email)
+    current_user.synchronized_at = datetime.now(timezone.utc)
+    db.commit()
+    return JSONResponse(
+    status_code=200,
+    content={
+        "detail": "Synchronized data updated",
+        "data": {
+            "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None
+        }
+    })
 
 @user_manager_router.post("/forgot-password", summary="Initiates a password reset process")
 async def forgot_password(

@@ -137,7 +137,7 @@ def authenticate_user(db: Session, email: str, password: str):
                 "data": None
             }
         )
-
+    
     # Check password
     if not verify_password(password, user.password):
         logging.debug(f"Authentication failed for user: {email}")
@@ -148,7 +148,14 @@ def authenticate_user(db: Session, email: str, password: str):
                 "data": None
             }
         )
-
+    if user.is_email_verified == False:
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": "Email not verified",
+                "data": None
+            }
+        )
     # Generate token for the user
     access_token = create_access_token(
         data={"sub": str(user.email)},
@@ -220,6 +227,28 @@ def get_current_user_id(token: str, db: Session):
     logging.debug("User found in DB: %s", user.email)
     return user.id
 
+def synchronize_user_data(token: str , db: Session):
+    logging.debug("Received request for synchronization with token: %s",
+                  token)
+    current_user = get_current_user(token, db)
+
+    # Якщо current_user є JSONResponse (помилка в get_current_user), то просто повертаємо його
+    if isinstance(current_user, JSONResponse):
+        return current_user  # Повертаємо JSONResponse помилки
+
+    # Логування знайденого користувача
+    logging.debug("User found: %s", current_user.email)
+    current_user.synchronized_at = datetime.now(timezone.utc)
+    db.commit()
+    return JSONResponse(
+    status_code=200,
+    content={
+        "detail": "Synchronized data updated",
+        "data": {
+            "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None
+        }
+    }
+)
 
 def is_user_verified(user_id, db: Session) -> bool:
     user = db.query(User).filter(User.id == user_id).first()
