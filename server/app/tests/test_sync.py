@@ -1,5 +1,8 @@
+import json
+import os
 import pytest
 from fastapi.testclient import TestClient
+import io
 from app.main import app
 from app.database import SessionLocal, Base, engine, get_db
 from app.user_manager.user import User
@@ -47,51 +50,77 @@ def auth_token(db_session: Session):
     return headers
 
 # Основний тест
-def test_sync_data(db_session: Session, auth_token):
-    payload = {
-        "clothing_items": [
-            {
-                "filename": "test1.jpg",
-                "name": "Test Pants",
-                "category": "pants",
-                "season": "winter",
-                "red": 100,
-                "green": 100,
-                "blue": 255,
-                "material": "Cotton",
-                "brand": "TestBrand",
-                "purchase_date": "2023-01-01",
-                "price": 100.50,
-                "is_favorite": True, # use true in real project
-                "owner_id": 1  
-            }
-        ],
-        "clothing_combinations": [
-            {
-                "name": "Test Combo",
-                "item_filenames": ["test1.jpg"],
-                "owner_id": 1  
-            }
-        ]
-    }
+def test_sync_data_with_files(db_session: Session, auth_token):
+    # Підготовка даних речей та комбінацій
+    clothing_items_data = [
+        {
+            "filename": "test1.jpg",
+            "name": "Test Pants",
+            "category": "pants",
+            "season": "winter",
+            "red": 100,
+            "green": 100,
+            "blue": 255,
+            "material": "Cotton",
+            "brand": "TestBrand",
+            "purchase_date": "2023-01-01",
+            "price": 100.50,
+            "is_favorite": True,
+            "owner_id": 1
+        }
+    ]
+    clothing_combinations_data = [
+        {
+            "name": "Test Combo",
+            "item_filenames": ["test1.jpg"],
+            "owner_id": 1
+        }
+    ]
 
-    # Запит до ендпоінта
-    response = client.post("/syncronize", json=payload, headers=auth_token)
+    # Перетворення словників у JSON-рядки
+    clothing_items_str = json.dumps(clothing_items_data)
+    clothing_combinations_str = json.dumps(clothing_combinations_data)
 
-    # Перевірки
-    assert response.status_code == 200, f"Error in sync: {response.json()}"
+    # Підготовка фейкового зображення
+    file_content = b"fake image data"
+    file = ("files", ("test1.jpg", io.BytesIO(file_content), "image/jpeg"))
 
-    # Отримуємо user_id з токена або з бази
+    # Надсилання запиту з multipart/form-data
+    response = client.post(
+        "/syncronize",
+        data={
+            "clothing_items": clothing_items_str,
+            "clothing_combinations": clothing_combinations_str
+        },
+        files=[file],
+        headers=auth_token
+    )
+
+    # Перевірка статусу
+    assert response.status_code == 200, f"Sync error: {response.text}"
+
+    # Отримуємо користувача з бази
     user = db_session.query(User).filter_by(email="test@gmail.com").first()
     assert user is not None
     user_id = user.id
 
-    # Перевіряємо, чи створено саме об'єкти для цього користувача
+    # Перевіряємо, що збережено 1 річ і 1 комбінацію
     items = db_session.query(ClothingItem).filter_by(owner_id=user_id).all()
     combos = db_session.query(ClothingCombination).filter_by(owner_id=user_id).all()
 
+    
     assert len(items) == 1
     assert items[0].name == "Test Pants"
+    assert items[0].filename.endswith(".jpg")
+
     assert len(combos) == 1
     assert combos[0].name == "Test Combo"
     assert len(combos[0].items) == 1
+
+    # Перевірка, що файл існує на сервері
+    saved_filename = items[0].filename
+    file_path = os.path.join("uploads", saved_filename)
+    assert os.path.exists(file_path), f"File {file_path} not found on server"
+
+    # 🔄 Прибирання за собою (опційно)
+    #os.remove(file_path)

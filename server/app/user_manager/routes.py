@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
-from typing import Optional
+import json
+from typing import List, Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, Form, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
@@ -10,6 +11,7 @@ from app.database import get_db
 from app.user_manager.user import User
 from app.close_manager.clothing_combination import ClothingCombination
 from app.close_manager.сlothing_item import ClothingItem
+from app.close_manager.clothing_controller import save_file
 from .user_controller import ALGORITHM, SECRET_KEY, create_user, authenticate_user, get_current_user, hash_password, is_user_verified, oauth2_scheme, send_password_reset_email, update_user_email, update_user_password
 import logging
 
@@ -168,7 +170,6 @@ def get_profile(token: str = Depends(oauth2_scheme), db: Session = Depends(get_d
             }
         }
     )
-    
 
 
 @user_manager_router.get("/is_activated")
@@ -188,35 +189,53 @@ def is_user_activated(user_id: int, db: Session = Depends(get_db)):
             content={"detail": "Internal Server Error"}
         )
 
+
 @user_manager_router.post("/syncronize")
-def sync_data(payload: dict, db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
-    items_data = payload.get("clothing_items", [])
-    combos_data = payload.get("clothing_combinations", [])
+async def sync_data(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme),
+                    clothing_items: str = Form(...),
+                    clothing_combinations: str = Form(...),
+                    files: List[UploadFile] = File(default=[])
+                    ):
+    items_data = json.loads(clothing_items)
+    combos_data = json.loads(clothing_combinations)
 
     current_user = get_current_user(token, db)
     # 1. Видалити старі речі та комбінації користувача
-    old_combos = db.query(ClothingCombination).filter_by(owner_id=current_user.id).all()
+    old_combos = db.query(ClothingCombination).filter_by(
+        owner_id=current_user.id).all()
     for combo in old_combos:
         combo.items.clear()  # очищає many-to-many зв'язки
         db.delete(combo)
 
-    old_items = db.query(ClothingItem).filter_by(owner_id=current_user.id).all()
+    old_items = db.query(ClothingItem).filter_by(
+        owner_id=current_user.id).all()
     for item in old_items:
         db.delete(item)
 
     db.commit()
-    print(f"🧹 Cleared old items and combinations for user {current_user.email}")
+    print(
+        f"🧹 Cleared old items and combinations for user {current_user.email}")
+
+        # 2. Додати нові речі
+    filename_map = {}
+    for file in files:
+        saved_name = save_file(file)
+        filename_map[file.filename] = saved_name  # запам’ятовуємо, під якою назвою зберегли
 
     # 2. Додати нові речі
     new_items = []
     for item in items_data:
-        # Видаляємо owner_id із словника, якщо він там є, щоб уникнути конфлікту
+        # Видаляємо owner_id із словника, якщо він є
         item_data_cleaned = {k: v for k, v in item.items() if k != "owner_id"}
 
-        # Створюємо новий об'єкт речі з прив'язкою до поточного користувача
+        # Оновлюємо назву файлу, якщо є така у мапі
+        original_filename = item.get("filename")
+        if original_filename in filename_map:
+            item_data_cleaned["filename"] = filename_map[original_filename]
+
+        # Створюємо новий об’єкт з прив’язкою до користувача
         new_item = ClothingItem(**item_data_cleaned, owner_id=current_user.id)
 
-        # Додаємо до сесії
         db.add(new_item)
         new_items.append(new_item)
 
@@ -224,12 +243,18 @@ def sync_data(payload: dict, db: Session = Depends(get_db), token: str = Depends
 
     # 3. Додати нові комбінації
     for combo in combos_data:
-        new_combo = ClothingCombination(name=combo["name"], owner_id=current_user.id)
+        new_combo = ClothingCombination(
+            name=combo["name"], owner_id=current_user.id)
         db.add(new_combo)
         db.commit()  # щоб combo.id був доступний
 
         for filename in combo["item_filenames"]:
-            item = db.query(ClothingItem).filter_by(filename=filename, owner_id=current_user.id).first()
+            # Отримуємо збережене ім’я файлу з мапи
+            saved_filename = filename_map.get(filename, filename)  # Якщо не знайдено — використовуємо як є
+
+            item = db.query(ClothingItem).filter_by(
+                filename=saved_filename, owner_id=current_user.id).first()
+
             if item:
                 new_combo.items.append(item)
 
@@ -245,13 +270,14 @@ def sync_data(payload: dict, db: Session = Depends(get_db), token: str = Depends
     current_user.synchronized_at = datetime.now(timezone.utc)
     db.commit()
     return JSONResponse(
-    status_code=200,
-    content={
-        "detail": "Synchronized data updated",
-        "data": {
-            "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None
-        }
-    })
+        status_code=200,
+        content={
+            "detail": "Synchronized data updated",
+            "data": {
+                "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None
+            }
+        })
+
 
 @user_manager_router.post("/forgot-password", summary="Initiates a password reset process")
 async def forgot_password(
@@ -464,7 +490,7 @@ async def change_password_form_from_forgot_password(
 
 @user_manager_router.get("/change-password-success", summary="Success page for password change", response_class=HTMLResponse, include_in_schema=False)
 async def change_password_success(locale: Optional[str] = 'en'):
-    if locale=="ua":
+    if locale == "ua":
         return HTMLResponse(content="<html><body><h2>Пароль успішно змінено!</h2></body></html>")
     else:
         return HTMLResponse(content="<html><body><h2>Password changed!</h2></body></html>")
