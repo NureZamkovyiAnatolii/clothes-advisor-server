@@ -194,39 +194,49 @@ def is_user_activated(user_id: int, db: Session = Depends(get_db)):
 async def sync_data(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme),
                     clothing_items: str = Form(...),
                     clothing_combinations: str = Form(...),
-                    files: List[UploadFile] = File(default=[])
-                    ):
+                    files: List[UploadFile] = File(default=[])):
+    logging.debug("Received request for data synchronization")
+    logging.debug("clothing_items: %s", clothing_items)  
+    logging.debug("clothing_combinations: %s", clothing_combinations) 
+
     items_data = json.loads(clothing_items)
     combos_data = json.loads(clothing_combinations)
 
+    logging.debug("items_data: %s, type: %s", items_data, type(items_data))
+    logging.debug("combos_data: %s, type: %s", combos_data, type(combos_data))
+
+
+
     current_user = get_current_user(token, db)
+    
     # 1. Видалити старі речі та комбінації користувача
-    old_combos = db.query(ClothingCombination).filter_by(
-        owner_id=current_user.id).all()
+    old_combos = db.query(ClothingCombination).filter_by(owner_id=current_user.id).all()
     for combo in old_combos:
         combo.items.clear()  # очищає many-to-many зв'язки
         db.delete(combo)
 
-    old_items = db.query(ClothingItem).filter_by(
-        owner_id=current_user.id).all()
+    old_items = db.query(ClothingItem).filter_by(owner_id=current_user.id).all()
     for item in old_items:
         db.delete(item)
 
     db.commit()
-    print(
-        f"🧹 Cleared old items and combinations for user {current_user.email}")
+    print(f"🧹 Cleared old items and combinations for user {current_user.email}")
 
-        # 2. Додати нові речі
+    # 2. Додати нові речі
     filename_map = {}
     for file in files:
         saved_name = save_file(file)
         filename_map[file.filename] = saved_name  # запам’ятовуємо, під якою назвою зберегли
 
-    # 2. Додати нові речі
+    old_to_new_items_map = {}  # Мапа старих ID до нових
+
     new_items = []
     for item in items_data:
-        # Видаляємо owner_id із словника, якщо він є
-        item_data_cleaned = {k: v for k, v in item.items() if k != "owner_id"}
+        # Видаляємо 'id' та 'owner_id' зі словника
+        item_data_cleaned = {
+            k: v for k, v in item.items()
+            if k not in ("id", "owner_id")
+        }
 
         # Оновлюємо назву файлу, якщо є така у мапі
         original_filename = item.get("filename")
@@ -237,6 +247,10 @@ async def sync_data(db: Session = Depends(get_db), token: str = Depends(oauth2_s
         new_item = ClothingItem(**item_data_cleaned, owner_id=current_user.id)
 
         db.add(new_item)
+        db.commit()  # Зберігаємо об'єкт в базі даних, щоб отримати його новий ID
+
+        # Мапуємо старий ID на новий
+        old_to_new_items_map[item["id"]] = new_item.id
         new_items.append(new_item)
 
     db.commit()
@@ -248,33 +262,25 @@ async def sync_data(db: Session = Depends(get_db), token: str = Depends(oauth2_s
         db.add(new_combo)
         db.commit()  # щоб combo.id був доступний
 
-        for filename in combo["item_filenames"]:
-            # Отримуємо збережене ім’я файлу з мапи
-            saved_filename = filename_map.get(filename, filename)  # Якщо не знайдено — використовуємо як є
-
-            item = db.query(ClothingItem).filter_by(
-                filename=saved_filename, owner_id=current_user.id).first()
-
-            if item:
-                new_combo.items.append(item)
+        for old_item_id in combo["old_item_ids"]:  # Використовуємо старі ID
+            # Шукаємо нові ID речей по старих
+            new_item_id = old_to_new_items_map.get(old_item_id)
+            if new_item_id:
+                item = db.query(ClothingItem).get(new_item_id)  # Знаходимо новий елемент по новому ID
+                if item:
+                    new_combo.items.append(item)
 
         db.commit()
-    current_user = get_current_user(token, db)
 
-    # Якщо current_user є JSONResponse (помилка в get_current_user), то просто повертаємо його
-    if isinstance(current_user, JSONResponse):
-        return current_user  # Повертаємо JSONResponse помилки
-
-    # Логування знайденого користувача
-    logging.debug("User found: %s", current_user.email)
     current_user.synchronized_at = datetime.now(timezone.utc)
     db.commit()
+    
     return JSONResponse(
         status_code=200,
         content={
             "detail": "Synchronized data updated",
             "data": {
-                "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None
+                "synchronized_at": current_user.synchronized_at.isoformat()
             }
         })
 

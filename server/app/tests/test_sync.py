@@ -52,30 +52,49 @@ def auth_token(db_session: Session):
 # Основний тест
 def test_sync_data_with_files(db_session: Session, auth_token):
     # Підготовка даних речей та комбінацій
+    
     clothing_items_data = [
-        {
-            "filename": "test1.jpg",
-            "name": "Test Pants",
-            "category": "pants",
-            "season": "winter",
-            "red": 100,
-            "green": 100,
-            "blue": 255,
-            "material": "Cotton",
-            "brand": "TestBrand",
-            "purchase_date": "2023-01-01",
-            "price": 100.50,
-            "is_favorite": True,
-            "owner_id": 1
-        }
-    ]
+    {
+        "id": 3,  
+        "filename": "test1.jpg",
+        "name": "Test Pants",
+        "category": "pants",
+        "season": "winter",
+        "red": 100,
+        "green": 100,
+        "blue": 255,
+        "material": "Cotton",
+        "brand": "TestBrand",
+        "purchase_date": "2023-01-01",
+        "price": 1000.50,
+        "is_favorite": True,
+        "owner_id": 1
+    },
+    {
+        "id": 4,  
+        "filename": "test2.jpg",
+        "name": "Test Jacket",
+        "category": "jacket",
+        "season": "winter",
+        "red": 50,
+        "green": 50,
+        "blue": 255,
+        "material": "Wool",
+        "brand": "TestBrand",
+        "purchase_date": "2023-02-01",
+        "price": 1500.75,
+        "is_favorite": False,
+        "owner_id": 1
+    }
+]   
+    # Старі ID речей
     clothing_combinations_data = [
-        {
-            "name": "Test Combo",
-            "item_filenames": ["test1.jpg"],
-            "owner_id": 1
-        }
-    ]
+    {
+        "name": "Test Combo",
+        "old_item_ids": [3, 4],  
+        "owner_id": 1
+    }
+]
 
     # Перетворення словників у JSON-рядки
     clothing_items_str = json.dumps(clothing_items_data)
@@ -109,13 +128,14 @@ def test_sync_data_with_files(db_session: Session, auth_token):
     combos = db_session.query(ClothingCombination).filter_by(owner_id=user_id).all()
 
     
-    assert len(items) == 1
+    assert len(items) == 2
     assert items[0].name == "Test Pants"
+    assert items[1].name == "Test Jacket"
     assert items[0].filename.endswith(".jpg")
 
     assert len(combos) == 1
     assert combos[0].name == "Test Combo"
-    assert len(combos[0].items) == 1
+    assert len(combos[0].items) == 2
 
     # Перевірка, що файл існує на сервері
     saved_filename = items[0].filename
