@@ -7,7 +7,7 @@ from PIL import Image
 from io import BytesIO
 from colorthief import ColorThief
 from app.user_manager.user_controller import get_current_user, get_current_user_id, oauth2_scheme
-from app.close_manager.clothing_controller import add_clothing_item_to_db, create_combination_in_db, get_all_combinations_for_user, mark_clothing_item_as_favorite, mark_clothing_item_as_unfavorite, save_file
+from app.close_manager.clothing_controller import add_clothing_item_to_db, create_combination_in_db, get_all_clothing_items_for_user, get_all_combinations_for_user, mark_clothing_item_as_favorite, mark_clothing_item_as_unfavorite, save_file
 from app.user_manager.user import User
 from app.close_manager.сlothing_item import ClothingItem
 
@@ -32,21 +32,7 @@ def get_user_clothing_items(
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
-    user_id = get_current_user_id(token,db)
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    items = db.query(ClothingItem).filter(ClothingItem.owner_id == user_id).all()
-    for item in items:
-        item.filename =f"{SERVER_URL}/uploads/"+  item.filename
-    result = {}
-    for idx, item in enumerate(items, start=1):
-        result[f"item_{idx}"] = item
-
-    return {
-        "detail": "Clothing items fetched successfully.",
-        "data": result
-    }
+    return get_all_clothing_items_for_user(db, token)
 
 @clothing_router.post("/add-clothing-item", summary="Add a new clothing item")
 async def add_clothing_item(

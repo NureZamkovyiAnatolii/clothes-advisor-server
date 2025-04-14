@@ -91,7 +91,7 @@ def test_sync_data_with_files(db_session: Session, auth_token):
     clothing_combinations_data = [
     {
         "name": "Test Combo",
-        "old_item_ids": [3, 4],  
+        "item_ids": [3, 4],  
         "owner_id": 1
     }
 ]
@@ -106,10 +106,11 @@ def test_sync_data_with_files(db_session: Session, auth_token):
 
     # Надсилання запиту з multipart/form-data
     response = client.post(
-        "/syncronize",
+        "/synchronize",
         data={
             "clothing_items": clothing_items_str,
-            "clothing_combinations": clothing_combinations_str
+            "clothing_combinations": clothing_combinations_str,
+            "is_server_to_local": False 
         },
         files=[file],
         headers=auth_token

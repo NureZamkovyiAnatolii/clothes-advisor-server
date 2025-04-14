@@ -14,6 +14,8 @@ from app.user_manager.user_controller import get_current_user_id
 UPLOAD_DIR = "uploads"
 MAX_FILE_SIZE_MB = 5
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+MAX_CLOTHING_ITEMS_COUNT = 100  
+MAX_CLOTHING_COMBINATIONS_COUNT = 50
 
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
@@ -60,11 +62,16 @@ def add_clothing_item_to_db(
     owner_id: int
 ) -> ClothingItem:
     existing_item = db.query(ClothingItem).filter(
-        ClothingItem.filename == filename).first()
+        ClothingItem.name == name).first()
     if existing_item:
         raise HTTPException(
-            status_code=400, detail="Clothing item with this filename already exists.")
-
+            status_code=400, detail="Clothing item with this filenamename already exists.")
+    # ✅ Перевірка кількості елементів користувача
+    item_count = db.query(ClothingItem).filter(ClothingItem.owner_id == owner_id).count()
+    if item_count >= MAX_CLOTHING_ITEMS_COUNT:
+        raise HTTPException(
+            status_code=400, detail="Item limit reached. Maximum 100 clothing items allowed per user.")
+    
     new_clothing_item = ClothingItem(
         filename=filename,
         name=name,
@@ -169,6 +176,25 @@ def get_all_combinations_for_user(
 
     return result
 
+def get_all_clothing_items_for_user(
+    db: Session ,
+    token: str 
+):
+    user_id = get_current_user_id(token,db)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    items = db.query(ClothingItem).filter(ClothingItem.owner_id == user_id).all()
+    for item in items:
+        item.filename =f"{SERVER_URL}/uploads/"+  item.filename
+    result = {}
+    for idx, item in enumerate(items, start=1):
+        result[f"item_{idx}"] = item
+
+    return {
+        "detail": "Clothing items fetched successfully.",
+        "data": result
+    }
 
 def create_combination_in_db(
     db: Session,
@@ -177,6 +203,14 @@ def create_combination_in_db(
     owner_id: int
 ) -> ClothingCombination:
 
+    # ✅ Перевірка кількості вже створених комбінацій
+    combo_count = db.query(ClothingCombination).filter(
+        ClothingCombination.owner_id == owner_id
+    ).count()
+    if combo_count >= MAX_CLOTHING_COMBINATIONS_COUNT:
+        raise HTTPException(
+            status_code=400, detail="Combination limit reached. Maximum 50 combinations allowed per user.")
+    
     items = db.query(ClothingItem).filter(
         ClothingItem.id.in_(item_ids),
         ClothingItem.owner_id == owner_id

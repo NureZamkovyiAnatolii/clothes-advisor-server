@@ -60,5 +60,18 @@ class ClothingItem(Base):
         
         if self.category not in CategoryEnum.__members__:
             raise HTTPException(status_code=400, detail=f"Invalid category value: {self.category}")
+        
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "category": self.category.value,  # Якщо це enum, потрібно додавати `.value`
+            "season": self.season.value,
+            "material": self.material,
+            "brand": self.brand,
+            "price": self.price,
+            "is_favorite": self.is_favorite,
+            "filename": self.filename
+        }
 
 

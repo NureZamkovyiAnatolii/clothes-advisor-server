@@ -1,3 +1,4 @@
+import json
 import re
 from typing import Optional
 import bcrypt
@@ -12,7 +13,9 @@ from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from fastapi.security import OAuth2PasswordBearer
 
-from app.user_manager.mail_controller import send_password_change_form, send_verification_code, send_verification_link
+from app.user_manager.mail_controller import send_password_change_form, send_verification_link
+from app.close_manager.clothing_combination import ClothingCombination
+from app.close_manager.сlothing_item import ClothingItem
 from .user import User
 
 # Налаштування логування
@@ -227,29 +230,122 @@ def get_current_user_id(token: str, db: Session):
     logging.debug("User found in DB: %s", user.email)
     return user.id
 
-def synchronize_user_data(token: str , db: Session):
-    logging.debug("Received request for synchronization with token: %s",
-                  token)
+def synchronize_user_data(
+    token: str,
+    clothing_items: str,
+    clothing_combinations: str,
+    db: Session,
+    files: list[tuple[str, tuple[str, bytes, str]]]
+):
+    logging.debug("Received request for data synchronization")
+    logging.debug("clothing_items: %s", clothing_items)  
+    logging.debug("clothing_combinations: %s", clothing_combinations) 
+
+    items_data = json.loads(clothing_items)
+    combos_data = json.loads(clothing_combinations)
+
+    logging.debug("items_data: %s, type: %s", items_data, type(items_data))
+    logging.debug("combos_data: %s, type: %s", combos_data, type(combos_data))
+
+
+
     current_user = get_current_user(token, db)
+    
+    # 1. Видалити старі речі та комбінації користувача
+    old_combos = db.query(ClothingCombination).filter_by(owner_id=current_user.id).all()
+    for combo in old_combos:
+        combo.items.clear()  # очищає many-to-many зв'язки
+        db.delete(combo)
 
-    # Якщо current_user є JSONResponse (помилка в get_current_user), то просто повертаємо його
-    if isinstance(current_user, JSONResponse):
-        return current_user  # Повертаємо JSONResponse помилки
+    old_items = db.query(ClothingItem).filter_by(owner_id=current_user.id).all()
+    for item in old_items:
+        db.delete(item)
 
-    # Логування знайденого користувача
-    logging.debug("User found: %s", current_user.email)
+    db.commit()
+    print(f"🧹 Cleared old items and combinations for user {current_user.email}")
+
+    # 2. Додати нові речі
+    filename_map = {}
+    for file in files:
+        from app.close_manager.clothing_controller import save_file
+        saved_name = save_file(file)
+        filename_map[file.filename] = saved_name  # запам’ятовуємо, під якою назвою зберегли
+
+    old_to_new_items_map = {}  # Мапа старих ID до нових
+
+    new_items = []
+    for item in items_data:
+        # Видаляємо 'id' та 'owner_id' зі словника
+        item_data_cleaned = {
+            k: v for k, v in item.items()
+            if k not in ("id", "owner_id")
+        }
+
+        # Оновлюємо назву файлу, якщо є така у мапі
+        original_filename = item.get("filename")
+        if original_filename in filename_map:
+            item_data_cleaned["filename"] = filename_map[original_filename]
+
+        # Створюємо новий об’єкт з прив’язкою до користувача
+        new_item = ClothingItem(**item_data_cleaned, owner_id=current_user.id)
+
+        db.add(new_item)
+        db.commit()  # Зберігаємо об'єкт в базі даних, щоб отримати його новий ID
+
+        # Мапуємо старий ID на новий
+        old_to_new_items_map[item["id"]] = new_item.id
+        new_items.append(new_item)
+
+    db.commit()
+
+    # 3. Додати нові комбінації
+    for combo in combos_data:
+        new_combo = ClothingCombination(
+            name=combo["name"], owner_id=current_user.id)
+        db.add(new_combo)
+        db.commit()  # щоб combo.id був доступний
+
+        for old_item_id in combo["item_ids"]:  # Використовуємо старі ID
+            # Шукаємо нові ID речей по старих
+            new_item_id = old_to_new_items_map.get(old_item_id)
+            if new_item_id:
+                item = db.query(ClothingItem).get(new_item_id)  # Знаходимо новий елемент по новому ID
+                if item:
+                    new_combo.items.append(item)
+
+        db.commit()
+
     current_user.synchronized_at = datetime.now(timezone.utc)
     db.commit()
+    
     return JSONResponse(
-    status_code=200,
-    content={
-        "detail": "Synchronized data updated",
-        "data": {
-            "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None
-        }
-    }
-)
+        status_code=200,
+        content={
+            "detail": "Synchronized data updated",
+            "data": {
+                "synchronized_at": current_user.synchronized_at.isoformat()
+            }
+        })
 
+def get_user_data(token: str, db: Session):
+    from app.close_manager.clothing_controller import get_all_combinations_for_user, get_all_clothing_items_for_user
+    items = get_all_clothing_items_for_user(db, token)
+    combos = get_all_combinations_for_user(db,token)
+    logging.debug(f"Items: {items}, Combinations: {combos}")
+
+    # Отримуємо дані з ключа 'data'
+    items_data = [
+    item.to_dict() if hasattr(item, 'to_dict') else item
+    for item in items['data'].values()  # Звертаємося до 'data', і використовуємо values()
+]
+    logging.debug(f"items_data: {items_data}")
+    return JSONResponse(content={
+        "detail": "All data retrieved successfully",
+        "data": {
+            "items": items_data,
+            "combinations": combos
+        }
+    })
 def is_user_verified(user_id, db: Session) -> bool:
     user = db.query(User).filter(User.id == user_id).first()
     return user is not None and user.is_email_verified

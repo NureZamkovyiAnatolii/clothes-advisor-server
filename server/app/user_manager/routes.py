@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-import json
 from typing import List, Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
@@ -9,10 +7,7 @@ import jwt
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.user_manager.user import User
-from app.close_manager.clothing_combination import ClothingCombination
-from app.close_manager.сlothing_item import ClothingItem
-from app.close_manager.clothing_controller import save_file
-from .user_controller import ALGORITHM, SECRET_KEY, create_user, authenticate_user, get_current_user, hash_password, is_user_verified, oauth2_scheme, send_password_reset_email, update_user_email, update_user_password
+from .user_controller import ALGORITHM, SECRET_KEY, create_user, authenticate_user, get_current_user, get_user_data, hash_password, is_user_verified, oauth2_scheme, send_password_reset_email, synchronize_user_data, update_user_email, update_user_password
 import logging
 
 user_manager_router = APIRouter(tags=["Users"])
@@ -190,99 +185,22 @@ def is_user_activated(user_id: int, db: Session = Depends(get_db)):
         )
 
 
-@user_manager_router.post("/syncronize")
+@user_manager_router.post("/synchronize", summary="Synchronizes user data between server and local storage")
 async def sync_data(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme),
                     clothing_items: str = Form(...),
                     clothing_combinations: str = Form(...),
-                    files: List[UploadFile] = File(default=[])):
-    logging.debug("Received request for data synchronization")
-    logging.debug("clothing_items: %s", clothing_items)  
-    logging.debug("clothing_combinations: %s", clothing_combinations) 
-
-    items_data = json.loads(clothing_items)
-    combos_data = json.loads(clothing_combinations)
-
-    logging.debug("items_data: %s, type: %s", items_data, type(items_data))
-    logging.debug("combos_data: %s, type: %s", combos_data, type(combos_data))
-
-
-
-    current_user = get_current_user(token, db)
-    
-    # 1. Видалити старі речі та комбінації користувача
-    old_combos = db.query(ClothingCombination).filter_by(owner_id=current_user.id).all()
-    for combo in old_combos:
-        combo.items.clear()  # очищає many-to-many зв'язки
-        db.delete(combo)
-
-    old_items = db.query(ClothingItem).filter_by(owner_id=current_user.id).all()
-    for item in old_items:
-        db.delete(item)
-
-    db.commit()
-    print(f"🧹 Cleared old items and combinations for user {current_user.email}")
-
-    # 2. Додати нові речі
-    filename_map = {}
-    for file in files:
-        saved_name = save_file(file)
-        filename_map[file.filename] = saved_name  # запам’ятовуємо, під якою назвою зберегли
-
-    old_to_new_items_map = {}  # Мапа старих ID до нових
-
-    new_items = []
-    for item in items_data:
-        # Видаляємо 'id' та 'owner_id' зі словника
-        item_data_cleaned = {
-            k: v for k, v in item.items()
-            if k not in ("id", "owner_id")
-        }
-
-        # Оновлюємо назву файлу, якщо є така у мапі
-        original_filename = item.get("filename")
-        if original_filename in filename_map:
-            item_data_cleaned["filename"] = filename_map[original_filename]
-
-        # Створюємо новий об’єкт з прив’язкою до користувача
-        new_item = ClothingItem(**item_data_cleaned, owner_id=current_user.id)
-
-        db.add(new_item)
-        db.commit()  # Зберігаємо об'єкт в базі даних, щоб отримати його новий ID
-
-        # Мапуємо старий ID на новий
-        old_to_new_items_map[item["id"]] = new_item.id
-        new_items.append(new_item)
-
-    db.commit()
-
-    # 3. Додати нові комбінації
-    for combo in combos_data:
-        new_combo = ClothingCombination(
-            name=combo["name"], owner_id=current_user.id)
-        db.add(new_combo)
-        db.commit()  # щоб combo.id був доступний
-
-        for old_item_id in combo["old_item_ids"]:  # Використовуємо старі ID
-            # Шукаємо нові ID речей по старих
-            new_item_id = old_to_new_items_map.get(old_item_id)
-            if new_item_id:
-                item = db.query(ClothingItem).get(new_item_id)  # Знаходимо новий елемент по новому ID
-                if item:
-                    new_combo.items.append(item)
-
-        db.commit()
-
-    current_user.synchronized_at = datetime.now(timezone.utc)
-    db.commit()
-    
-    return JSONResponse(
-        status_code=200,
-        content={
-            "detail": "Synchronized data updated",
-            "data": {
-                "synchronized_at": current_user.synchronized_at.isoformat()
-            }
-        })
+                    files: Optional[List[UploadFile]] = File(None),
+                    is_server_to_local: bool = Form(True),):
+    if is_server_to_local:
+        return get_user_data(token=token, db=db)      
+    else:
+        return synchronize_user_data(
+            db=db,
+            token=token,
+            clothing_items=clothing_items,
+            clothing_combinations=clothing_combinations,
+            files=files)
+        
 
 
 @user_manager_router.post("/forgot-password", summary="Initiates a password reset process")
