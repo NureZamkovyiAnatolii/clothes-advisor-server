@@ -338,12 +338,14 @@ def get_user_data(token: str, db: Session):
     item.to_dict() if hasattr(item, 'to_dict') else item
     for item in items['data'].values()  # Звертаємося до 'data', і використовуємо values()
 ]
+    current_user = get_current_user(token, db)
     logging.debug(f"items_data: {items_data}")
     return JSONResponse(content={
         "detail": "All data retrieved successfully",
         "data": {
             "items": items_data,
-            "combinations": combos
+            "combinations": combos,
+            "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None, 
         }
     })
 def is_user_verified(user_id, db: Session) -> bool:
