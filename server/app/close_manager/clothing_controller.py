@@ -40,7 +40,8 @@ def save_file(file):
     return unique_filename
 
 
-# Створення роутера для додавання елемента одягу
+
+
 clothing_item_router = APIRouter()
 
 

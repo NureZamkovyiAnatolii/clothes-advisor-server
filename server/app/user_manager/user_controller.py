@@ -334,14 +334,10 @@ def get_user_data(token: str, db: Session):
     combo_ids = []
     for combo in combos:
         items_only = []
+        
         # Перебираємо кожен елемент у списку items
         for item in combo['items']:
-            # Створюємо нову структуру даних з лише потрібними полями
-            item_data = {
-                'id': item['id'],
-                # Інші поля, які ти хочеш залишити
-            }
-            items_only.append(item_data)
+            items_only.append(item['id'])
         
         combo_ids.append({
             'id': combo["id"],

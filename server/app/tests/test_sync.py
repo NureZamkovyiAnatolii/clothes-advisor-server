@@ -89,8 +89,7 @@ def test_sync_data_with_files(db_session: Session, auth_token):
     clothing_combinations_data = [
     {
         "name": "Test Combo",
-        "item_ids": [3, 4],  
-        "owner_id": 1
+        "item_ids": [3, 4]
     }
 ]
 
