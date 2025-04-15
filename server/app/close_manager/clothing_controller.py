@@ -170,6 +170,7 @@ def get_all_combinations_for_user(
             for item in combo.items
         ]
         result.append({
+            "id": combo.id,
             "name": combo.name,
             "items": items
         })

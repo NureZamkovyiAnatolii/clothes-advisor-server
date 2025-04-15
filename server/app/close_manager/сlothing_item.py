@@ -71,7 +71,11 @@ class ClothingItem(Base):
             "brand": self.brand,
             "price": self.price,
             "is_favorite": self.is_favorite,
-            "filename": self.filename
+            "filename": self.filename,
+            "red": self.red,
+            "green": self.green,
+            "blue": self.blue,
+            "purchase_date": self.purchase_date.strftime('%Y-%m-%d') if self.purchase_date else None
         }
 
 

@@ -331,20 +331,39 @@ def get_user_data(token: str, db: Session):
     from app.close_manager.clothing_controller import get_all_combinations_for_user, get_all_clothing_items_for_user
     items = get_all_clothing_items_for_user(db, token)
     combos = get_all_combinations_for_user(db,token)
+    combo_ids = []
+    for combo in combos:
+        items_only = []
+        # Перебираємо кожен елемент у списку items
+        for item in combo['items']:
+            # Створюємо нову структуру даних з лише потрібними полями
+            item_data = {
+                'id': item['id'],
+                # Інші поля, які ти хочеш залишити
+            }
+            items_only.append(item_data)
+        
+        combo_ids.append({
+            'id': combo["id"],
+            'name': combo["name"],
+            'items': items_only
+        })
+
     logging.debug(f"Items: {items}, Combinations: {combos}")
 
     # Отримуємо дані з ключа 'data'
     items_data = [
-    item.to_dict() if hasattr(item, 'to_dict') else item
-    for item in items['data'].values()  # Звертаємося до 'data', і використовуємо values()
-]
+        item.to_dict() if hasattr(item, 'to_dict') else item
+        for item in items['data'].values()  # Звертаємося до 'data', і використовуємо values()
+        ]
+    
     current_user = get_current_user(token, db)
     logging.debug(f"items_data: {items_data}")
     return JSONResponse(content={
         "detail": "All data retrieved successfully",
         "data": {
             "items": items_data,
-            "combinations": combos,
+            "combinations": combo_ids,
             "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None, 
         }
     })
