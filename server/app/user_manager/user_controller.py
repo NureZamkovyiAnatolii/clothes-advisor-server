@@ -241,7 +241,10 @@ def synchronize_user_data(
     logging.debug("clothing_items: %s", clothing_items)  
     logging.debug("clothing_combinations: %s", clothing_combinations) 
 
-    items_data = json.loads(clothing_items)
+    if isinstance(clothing_items, str):
+        items_data = json.loads(clothing_items)
+    else:
+        items_data = clothing_items
     combos_data = json.loads(clothing_combinations)
 
     logging.debug("items_data: %s, type: %s", items_data, type(items_data))
@@ -252,7 +255,7 @@ def synchronize_user_data(
     current_user = get_current_user(token, db)
     
     # 1. Видалити старі речі та комбінації користувача
-    old_combos = db.query(ClothingCombination).filter_by(owner_id=current_user.id).all()
+    old_combos = db.query(ClothingCombination).filter_by(owner_id = current_user.id).all()
     for combo in old_combos:
         combo.items.clear()  # очищає many-to-many зв'язки
         db.delete(combo)
@@ -299,17 +302,23 @@ def synchronize_user_data(
     db.commit()
 
     # 3. Додати нові комбінації
+    old_to_new_combos_map = {}  # мапа старих ID комбінацій до нових
+
     for combo in combos_data:
+        old_combo_id = combo["id"]
+
         new_combo = ClothingCombination(
             name=combo["name"], owner_id=current_user.id)
         db.add(new_combo)
         db.commit()  # щоб combo.id був доступний
 
-        for old_item_id in combo["item_ids"]:  # Використовуємо старі ID
-            # Шукаємо нові ID речей по старих
+        # Мапуємо старий ID на новий
+        old_to_new_combos_map[old_combo_id] = new_combo.id
+
+        for old_item_id in combo["item_ids"]:
             new_item_id = old_to_new_items_map.get(old_item_id)
             if new_item_id:
-                item = db.query(ClothingItem).get(new_item_id)  # Знаходимо новий елемент по новому ID
+                item = db.query(ClothingItem).get(new_item_id)
                 if item:
                     new_combo.items.append(item)
 
@@ -317,13 +326,19 @@ def synchronize_user_data(
 
     current_user.synchronized_at = datetime.now(timezone.utc)
     db.commit()
-    
+
+    # Перетворення мап у список словників
+    item_id_mapping_list = [{"old": old_id, "new": new_id} for old_id, new_id in old_to_new_items_map.items()]
+    combo_id_mapping_list = [{"old": old_id, "new": new_id} for old_id, new_id in old_to_new_combos_map.items()]
+
     return JSONResponse(
         status_code=200,
         content={
             "detail": "Synchronized data updated",
             "data": {
-                "synchronized_at": current_user.synchronized_at.isoformat()
+                "synchronized_at": current_user.synchronized_at.isoformat(),
+                "item_id_mapping": item_id_mapping_list,
+                "combo_id_mapping": combo_id_mapping_list
             }
         })
 

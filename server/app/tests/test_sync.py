@@ -87,7 +87,8 @@ def test_sync_data_with_files(db_session: Session, auth_token):
 ]   
     # Старі ID речей
     clothing_combinations_data = [
-    {
+    {   
+        "id": 1,
         "name": "Test Combo",
         "item_ids": [3, 4]
     }
