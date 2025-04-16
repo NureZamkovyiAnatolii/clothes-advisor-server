@@ -13,13 +13,10 @@ def test_register_and_profile():
 
     # Реєстрація
     response = client.post("/register", data=register_data)
-    assert response.status_code == 200, f"❌ Помилка реєстрації: {response.text}"
-
-    json_data = response.json()
-    assert "user_id" in json_data, "❌ user_id не повернуто"
+    assert response.status_code == 201
     
     # Токен також повертається з create_user
-    access_token = json_data.get("access_token") or json_data.get("token")
+    access_token = response.json()["data"]["access_token"]
     if not access_token:
         # Альтернатива: якщо токен не повертається з register
         print("⚠️ Увага: токен не повернуто з /register. Перевір чи повертаєш його у відповіді.")

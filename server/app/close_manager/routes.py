@@ -1,6 +1,6 @@
 import os
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -131,6 +131,47 @@ async def add_clothing_item(
             "price": new_clothing_item.price,
             "is_favorite": new_clothing_item.is_favorite,
             "owner_id": new_clothing_item.owner_id,
+        }
+    }
+
+@clothing_router.put("/clothing-items/{item_id}")
+async def update_clothing_item(
+    item_id: int, 
+    request: Request,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)):
+    current_user: User = get_current_user(token, db)
+    clothing_item = db.query(ClothingItem).filter(ClothingItem.id == item_id).first()
+
+    if not clothing_item:
+        raise HTTPException(status_code=404, detail="Clothing item not found")
+
+    # 🔐 Check if the clothing item belongs to the current user
+    if clothing_item.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not allowed to update this item")
+    
+    form_data = await request.json()  # or await request.form() if sending FormData
+    try:
+        updated_item = update_clothing_item_in_db(db, item_id, **form_data)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    # Return all the fields that were updated
+    return {
+        "message": "Item updated successfully",
+        "updated_item": {
+            "id": updated_item.id,
+            "name": updated_item.name,
+            "category": updated_item.category,
+            "season": updated_item.season,
+            "red": updated_item.red,
+            "green": updated_item.green,
+            "blue": updated_item.blue,
+            "material": updated_item.material,
+            "brand": updated_item.brand,
+            "purchase_date": updated_item.purchase_date.isoformat() if updated_item.purchase_date else None,
+            "price": updated_item.price,
+            "is_favorite": updated_item.is_favorite,
         }
     }
 

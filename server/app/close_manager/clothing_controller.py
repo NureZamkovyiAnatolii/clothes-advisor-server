@@ -122,6 +122,24 @@ def add_clothing_item_to_db(
 
     return new_clothing_item
 
+def update_clothing_item_in_db(
+    db: Session,
+    item_id: int,
+    **fields
+) -> ClothingItem:
+    item = db.query(ClothingItem).filter(ClothingItem.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Clothing item not found")
+
+    for key, value in fields.items():
+        if value is not None:
+            if key == "purchase_date":
+                value = datetime.strptime(value, "%Y-%m-%d")
+            setattr(item, key, value)
+
+    db.commit()
+    db.refresh(item)
+    return item
 
 def remove_file_by_clothing_item_id(clothing_item_id: int, is_preview: bool, db: Session):
     # Find the clothing item by its ID

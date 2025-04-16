@@ -6,8 +6,8 @@ client = TestClient(app)
 def test_get_profile_with_token():
     # Login data (replace with real credentials)
     login_data = {
-        "email": "zamochek9120@gmail.com",
-        "password": "123"
+        "email": "test@gmail.com",
+        "password": "pass"
     }
 
     # Get the token
@@ -15,7 +15,7 @@ def test_get_profile_with_token():
     assert response.status_code == 200, f"Error obtaining token: {response.json()}"
 
     # Get the token
-    token = response.json().get("access_token")
+    token = response.json()["data"]["access_token"]
     assert token, "Token not obtained"
 
     # Request to /profile with the token
