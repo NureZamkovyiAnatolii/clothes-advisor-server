@@ -6,8 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.model import *
-from app.user_manager.mail_controller import SERVER_URL
-from app.user_manager.user_controller import get_current_user_id
+from app.user_manager import get_current_user_id, SERVER_URL
 from rembg import remove
 
 # Directory for storing files, max file size, and max clothing items/combination counts
