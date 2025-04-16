@@ -9,7 +9,7 @@ from fastapi import HTTPException
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema
 from requests import Session
 
-from app.user_manager.user import User
+from app.model.user import User
 
 SERVER_URL = os.getenv("SERVER_URL")
 conf = ConnectionConfig(

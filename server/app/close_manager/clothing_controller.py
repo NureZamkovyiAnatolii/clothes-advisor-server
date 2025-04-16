@@ -4,10 +4,8 @@ import uuid
 from fastapi import HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from app.close_manager.сlothing_item import ClothingItem
 from datetime import datetime
-
-from app.close_manager.clothing_combination import ClothingCombination
+from app.model import *
 from app.user_manager.mail_controller import SERVER_URL
 from app.user_manager.user_controller import get_current_user_id
 from rembg import remove

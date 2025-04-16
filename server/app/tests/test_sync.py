@@ -5,9 +5,7 @@ from fastapi.testclient import TestClient
 import io
 from app.main import app
 from app.database import SessionLocal, Base, engine, get_db
-from app.user_manager.user import User
-from app.close_manager.clothing_combination import ClothingCombination
-from app.close_manager.сlothing_item import ClothingItem
+from app.model import *
 from sqlalchemy.orm import Session
 
 

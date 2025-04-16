@@ -9,8 +9,7 @@ from io import BytesIO
 from colorthief import ColorThief
 from app.user_manager.user_controller import get_current_user, get_current_user_id, oauth2_scheme
 from app.close_manager.clothing_controller import *
-from app.user_manager.user import User
-from app.close_manager.сlothing_item import ClothingItem
+from app.model import *
 
 clothing_router = APIRouter(tags=["Close Operations"])
 # Тепер можеш використати змінну

@@ -14,9 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from fastapi.security import OAuth2PasswordBearer
 
 from app.user_manager.mail_controller import send_password_change_form, send_verification_link
-from app.close_manager.clothing_combination import ClothingCombination
-from app.close_manager.сlothing_item import ClothingItem
-from .user import User
+from app.model import *
 
 # Налаштування логування
 logging.basicConfig(level=logging.DEBUG)

@@ -2,13 +2,12 @@ from datetime import date, datetime, timezone
 import os
 import shutil
 from app.database import get_db
-from app.user_manager.user import User
+from app.model.user import User
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from app.close_manager.сlothing_item import CategoryEnum, ClothingItem, SeasonEnum
 from app.user_manager.user_controller import hash_password
-from app.close_manager.clothing_combination import ClothingCombination
+from app.model import *
 
 def seed_users(db: Session):
     users_data = [
