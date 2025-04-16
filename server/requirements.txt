@@ -13,3 +13,4 @@ fastapi_mail
 httpx
 pytest
 rembg
+onnxruntime
