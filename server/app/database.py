@@ -20,7 +20,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 # Import models
-
+from app.model import *
 
 # Inspect existing tables in the database
 inspector = inspect(engine)
