@@ -1,13 +1,14 @@
 import os
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from PIL import Image
 from io import BytesIO
 from colorthief import ColorThief
 from app.user_manager.user_controller import get_current_user, get_current_user_id, oauth2_scheme
-from app.close_manager.clothing_controller import add_clothing_item_to_db, create_combination_in_db, get_all_clothing_items_for_user, get_all_combinations_for_user, mark_clothing_item_as_favorite, mark_clothing_item_as_unfavorite, save_file
+from app.close_manager.clothing_controller import *
 from app.user_manager.user import User
 from app.close_manager.сlothing_item import ClothingItem
 
@@ -134,6 +135,53 @@ async def add_clothing_item(
         }
     }
 
+@clothing_router.put("/clothing-items/{clothing_item_id}/preview-remove-background")
+def preview_remove_clothing_item_background(
+    clothing_item_id: int,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    current_user: User = get_current_user(token, db)
+
+    clothing_item = db.query(ClothingItem).filter(
+        ClothingItem.id == clothing_item_id,
+        ClothingItem.owner_id == current_user.id
+    ).first()
+
+    if not clothing_item:
+        raise HTTPException(status_code=404, detail="Clothing item not found")
+
+    new_filename, output_path = remove_background_preview(clothing_item.filename)
+
+    return FileResponse(
+        path=output_path,
+        filename=new_filename,
+        media_type="image/png"
+    )
+
+@clothing_router.put("/clothing-items/{clothing_item_id}/confirm-remove-background")
+def confirm_background_removal(
+    clothing_item_id: int,
+    is_preview: bool,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    current_user: User = get_current_user(token, db)
+
+    clothing_item = db.query(ClothingItem).filter(
+        ClothingItem.id == clothing_item_id,
+        ClothingItem.owner_id == current_user.id
+    ).first()
+
+    if not clothing_item:
+        raise HTTPException(status_code=404, detail="Clothing item not found")
+
+    # Викликаємо функцію для видалення файлу за ID
+    result = remove_file_by_clothing_item_id(clothing_item_id, is_preview, db)
+
+    return {"detail": result["detail"], "new_filename": clothing_item.filename}
+
+    
 @clothing_router.post("/items/{item_id}/favorite", response_model=None)
 def favorite_item(
     item_id: int,

@@ -1,6 +1,7 @@
+import logging
 import os
 import uuid
-from fastapi import APIRouter, HTTPException
+from fastapi import HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.close_manager.сlothing_item import ClothingItem
@@ -9,44 +10,74 @@ from datetime import datetime
 from app.close_manager.clothing_combination import ClothingCombination
 from app.user_manager.mail_controller import SERVER_URL
 from app.user_manager.user_controller import get_current_user_id
+from rembg import remove
 
-# Директорія для зберігання файлів
+# Directory for storing files, max file size, and max clothing items/combination counts
 UPLOAD_DIR = "uploads"
 MAX_FILE_SIZE_MB = 5
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
-MAX_CLOTHING_ITEMS_COUNT = 100  
+MAX_CLOTHING_ITEMS_COUNT = 100
 MAX_CLOTHING_COMBINATIONS_COUNT = 50
 
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
-# Функція для збереження файлу на сервері
+# Function for saving a file on the server
 
 
-def save_file(file):
-    # Генерація унікального імені для файлу
+# Function for saving a file on the server
+def save_file(file: UploadFile):
+    # Generate a unique filename for the file
     file_extension = file.filename.split('.')[-1]
     unique_filename = f"{uuid.uuid4()}.{file_extension}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
-    # Перевірка розміру
-    if len(file.file.read()) > MAX_FILE_SIZE_BYTES:
+
+    # Create the directory if it doesn't exist
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+    # Read the entire content of the file
+    content = file.file.read()
+
+    # Check file size
+    if len(content) > MAX_FILE_SIZE_BYTES:
         return JSONResponse(
             status_code=400,
-            content={"detail": f"Файл перевищує {MAX_FILE_SIZE_MB} МБ."}
+            content={"detail": f"File size more than {MAX_FILE_SIZE_MB} MB."}
         )
+
+    # Write the file to the disk
     with open(file_path, "wb") as f:
-        f.write(file.file.read())
+        f.write(content)
 
     return unique_filename
 
 
+def remove_background_preview(filename: str) -> tuple[str, str]:
 
+    # Define the input path for the file to be processed
 
-clothing_item_router = APIRouter()
+    input_path = os.path.join(UPLOAD_DIR, filename)
+
+    # Get the base name of the file without the extension
+    # Generate the output filename with the "_bg_removed" suffix
+    base_name = os.path.splitext(filename)[0]
+    output_filename = f"{base_name}_bg_removed.png"
+    output_path = os.path.join(UPLOAD_DIR, output_filename)
+
+    # Open the input file in read-binary mode
+    # Read the content of the input file
+    # Process the input data to remove the background
+    with open(input_path, 'rb') as input_file:
+        input_data = input_file.read()
+        output_data = remove(input_data)
+
+    with open(output_path, 'wb') as out_file:
+        out_file.write(output_data)
+
+    return output_filename, output_path
 
 
 def add_clothing_item_to_db(
-
     db: Session,
     filename: str,
     name: str,
@@ -62,17 +93,13 @@ def add_clothing_item_to_db(
     is_favorite: bool,
     owner_id: int
 ) -> ClothingItem:
-    existing_item = db.query(ClothingItem).filter(
-        ClothingItem.name == name).first()
-    if existing_item:
-        raise HTTPException(
-            status_code=400, detail="Clothing item with this filenamename already exists.")
-    # ✅ Перевірка кількості елементів користувача
-    item_count = db.query(ClothingItem).filter(ClothingItem.owner_id == owner_id).count()
+    # ✅ Checking the number of user items
+    item_count = db.query(ClothingItem).filter(
+        ClothingItem.owner_id == owner_id).count()
     if item_count >= MAX_CLOTHING_ITEMS_COUNT:
         raise HTTPException(
             status_code=400, detail="Item limit reached. Maximum 100 clothing items allowed per user.")
-    
+
     new_clothing_item = ClothingItem(
         filename=filename,
         name=name,
@@ -89,6 +116,8 @@ def add_clothing_item_to_db(
         is_favorite=is_favorite,
         owner_id=owner_id
     )
+    logging.debug(f"Adding clothing item: {new_clothing_item}")
+    logging.debug(f"Clothing item dict: {new_clothing_item.__dict__}")
 
     db.add(new_clothing_item)
     db.commit()
@@ -97,12 +126,55 @@ def add_clothing_item_to_db(
     return new_clothing_item
 
 
+def remove_file_by_clothing_item_id(clothing_item_id: int, is_preview: bool, db: Session):
+    # Find the clothing item by its ID
+    clothing_item = db.query(ClothingItem).filter(
+        ClothingItem.id == clothing_item_id).first()
+
+    if not clothing_item:
+        raise HTTPException(status_code=404, detail="Clothing item not found.")
+
+    base_name = os.path.splitext(clothing_item.filename)[0]
+
+    # If is_preview is True, delete the original file; if False, delete the preview file
+    if is_preview:
+        target_filename = clothing_item.filename
+    else:
+        target_filename = f"{base_name}_bg_removed.png"
+
+    target_path = os.path.join(UPLOAD_DIR, target_filename)
+    logging.info(f"Target path for deletion: {target_path}")
+
+    # Check if the file exists and delete it
+    if os.path.exists(target_path):
+        os.remove(target_path)
+
+        # After deletion, update the filename with UUID in the database
+        if is_preview:
+            new_filename = f"{uuid.uuid4()}.png"
+
+            old_file_path = os.path.join(
+                UPLOAD_DIR, f"{base_name}_bg_removed.png")
+            logging.info(f"Old file path for renaming: {old_file_path}")
+            new_file_path = os.path.join(UPLOAD_DIR, new_filename)
+
+            if os.path.exists(old_file_path):
+                os.rename(old_file_path, new_file_path)
+
+            clothing_item.filename = new_filename
+            db.commit()
+
+        return {"detail": f"File '{os.path.basename(target_path)}' was deleted, and filename updated in database to '{new_filename}'."}
+    else:
+        raise HTTPException(status_code=404, detail="Файл не знайдено.")
+
+
 def mark_clothing_item_as_favorite(
     db: Session,
     item_id: int,
     owner_id: int
 ) -> ClothingItem:
-    # Знаходимо елемент за ID та власником
+    # Find the clothing item by its ID and owner ID
     item = db.query(ClothingItem).filter(
         ClothingItem.id == item_id,
         ClothingItem.owner_id == owner_id
@@ -111,7 +183,7 @@ def mark_clothing_item_as_favorite(
     if not item:
         raise HTTPException(status_code=404, detail="Clothing item not found")
 
-    # Встановлюємо прапорець улюбленого
+    # Update the is_favorite status
     item.is_favorite = True
     db.commit()
     db.refresh(item)
@@ -124,7 +196,6 @@ def mark_clothing_item_as_unfavorite(
     item_id: int,
     owner_id: int
 ) -> ClothingItem:
-    # Знаходимо елемент за ID та власником
     item = db.query(ClothingItem).filter(
         ClothingItem.id == item_id,
         ClothingItem.owner_id == owner_id
@@ -178,17 +249,19 @@ def get_all_combinations_for_user(
 
     return result
 
+
 def get_all_clothing_items_for_user(
-    db: Session ,
-    token: str 
+    db: Session,
+    token: str
 ):
-    user_id = get_current_user_id(token,db)
+    user_id = get_current_user_id(token, db)
     if not user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    items = db.query(ClothingItem).filter(ClothingItem.owner_id == user_id).all()
+    items = db.query(ClothingItem).filter(
+        ClothingItem.owner_id == user_id).all()
     for item in items:
-        item.filename =f"{SERVER_URL}/uploads/"+  item.filename
+        item.filename = f"{SERVER_URL}/uploads/" + item.filename
     result = {}
     for idx, item in enumerate(items, start=1):
         result[f"item_{idx}"] = item
@@ -198,6 +271,7 @@ def get_all_clothing_items_for_user(
         "data": result
     }
 
+
 def create_combination_in_db(
     db: Session,
     name: str,
@@ -205,14 +279,14 @@ def create_combination_in_db(
     owner_id: int
 ) -> ClothingCombination:
 
-    # ✅ Перевірка кількості вже створених комбінацій
+    # ✅ Checking the number of user combinations
     combo_count = db.query(ClothingCombination).filter(
         ClothingCombination.owner_id == owner_id
     ).count()
     if combo_count >= MAX_CLOTHING_COMBINATIONS_COUNT:
         raise HTTPException(
             status_code=400, detail="Combination limit reached. Maximum 50 combinations allowed per user.")
-    
+
     items = db.query(ClothingItem).filter(
         ClothingItem.id.in_(item_ids),
         ClothingItem.owner_id == owner_id
