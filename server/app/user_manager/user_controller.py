@@ -340,6 +340,19 @@ def synchronize_user_data(
             }
         })
 
+def update_synchronized_at(token: str, db: Session):
+    current_user = get_current_user(token, db)
+    current_user.synchronized_at = datetime.now(timezone.utc)
+    db.commit()
+    return JSONResponse(
+        status_code=200,
+        content={
+            "detail": "Synchronized at updated",
+            "data": {
+                "synchronized_at": current_user.synchronized_at.isoformat()
+            }
+        }
+    )
 def get_user_data(token: str, db: Session):
     from app.close_manager.clothing_controller import get_all_combinations_for_user, get_all_clothing_items_for_user
     items = get_all_clothing_items_for_user(db, token)

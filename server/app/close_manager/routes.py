@@ -10,6 +10,7 @@ from colorthief import ColorThief
 from app.user_manager.user_controller import get_current_user, get_current_user_id, oauth2_scheme
 from app.close_manager.clothing_controller import *
 from app.model import *
+from app.user_manager import *
 
 clothing_router = APIRouter(tags=["Close Operations"])
 # Тепер можеш використати змінну
@@ -111,7 +112,7 @@ async def add_clothing_item(
         is_favorite,
         owner_id
     )
-
+    update_synchronized_at(token, db)
     return {
         "detail": "Clothing item added successfully.",
         "data": {
@@ -155,7 +156,7 @@ async def update_clothing_item(
         updated_item = update_clothing_item_in_db(db, item_id, **form_data)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
-
+    update_synchronized_at(token, db)
     # Return all the fields that were updated
     return {
         "message": "Item updated successfully",
@@ -193,11 +194,11 @@ def preview_remove_clothing_item_background(
 
     new_filename, output_path = remove_background_preview(clothing_item.filename)
 
-    return FileResponse(
-        path=output_path,
-        filename=new_filename,
-        media_type="image/png"
-    )
+    return JSONResponse({
+
+        "detail": "Background removed successfully.",
+        "data": f"{SERVER_URL}/{output_path}"
+        })
 
 @clothing_router.put("/clothing-items/{clothing_item_id}/confirm-remove-background")
 def confirm_background_removal(
@@ -218,11 +219,11 @@ def confirm_background_removal(
 
     # Викликаємо функцію для видалення файлу за ID
     result = remove_file_by_clothing_item_id(clothing_item_id, is_preview, db)
-
+    update_synchronized_at(token, db)
     return {"detail": result["detail"], "new_filename": clothing_item.filename}
 
     
-@clothing_router.post("/items/{item_id}/favorite", response_model=None)
+@clothing_router.put("/items/{item_id}/favorite", response_model=None)
 def favorite_item(
     item_id: int,
     db: Session = Depends(get_db),
@@ -230,9 +231,10 @@ def favorite_item(
 ):
     current_user: User = get_current_user(token,db)
     updated_item = mark_clothing_item_as_favorite(db, item_id, current_user.id)
+    update_synchronized_at(token, db)
     return {"message": "Item marked as favorite", "item": updated_item.id}
 
-@clothing_router.post("/items/{item_id}/unfavorite", response_model=None)
+@clothing_router.put("/items/{item_id}/unfavorite", response_model=None)
 def favorite_item(
     item_id: int,
     db: Session = Depends(get_db),
@@ -240,6 +242,7 @@ def favorite_item(
 ):
     current_user: User = get_current_user(token,db)
     updated_item = mark_clothing_item_as_unfavorite(db, item_id, current_user.id)
+    update_synchronized_at(token, db)
     return {"message": "Item marked as unfavorite", "item": updated_item.id}
 
 @clothing_router.get("/clothing-combinations")
@@ -270,7 +273,7 @@ def create_clothing_combination(
         item_ids=item_ids,
         owner_id=user_id
     )
-
+    update_synchronized_at(token, db)
     return {
         "detail": "Clothing combination created successfully.",
         "combination_id": combination.id

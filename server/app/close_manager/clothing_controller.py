@@ -179,9 +179,9 @@ def remove_file_by_clothing_item_id(clothing_item_id: int, is_preview: bool, db:
             clothing_item.filename = new_filename
             db.commit()
 
-        return {"detail": f"File '{os.path.basename(target_path)}' was deleted, and filename updated in database to '{new_filename}'."}
+        return {"detail": f"File '{os.path.basename(target_path)}' was deleted, and filename updated in database to '{clothing_item.filename}'."}
     else:
-        raise HTTPException(status_code=404, detail="Файл не знайдено.")
+        raise HTTPException(status_code=404, detail="File not found.")
 
 
 def mark_clothing_item_as_favorite(
@@ -202,7 +202,7 @@ def mark_clothing_item_as_favorite(
     item.is_favorite = True
     db.commit()
     db.refresh(item)
-
+    
     return item
 
 
