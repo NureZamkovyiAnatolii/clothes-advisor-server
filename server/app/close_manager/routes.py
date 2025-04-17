@@ -16,6 +16,7 @@ clothing_router = APIRouter(tags=["Close Operations"])
 # Тепер можеш використати змінну
 SERVER_URL = os.getenv("SERVER_URL")
 
+
 def get_dominant_color(file: UploadFile):
     """Determines the dominant color of an image"""
     img = Image.open(
@@ -28,12 +29,14 @@ def get_dominant_color(file: UploadFile):
     color_thief = ColorThief(buffer)
     return color_thief.get_color(quality=1)  # (R, G, B)
 
+
 @clothing_router.get("/clothing-items")
 def get_user_clothing_items(
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
     return get_all_clothing_items_for_user(db, token)
+
 
 @clothing_router.post("/add-clothing-item", summary="Add a new clothing item")
 async def add_clothing_item(
@@ -135,27 +138,31 @@ async def add_clothing_item(
         }
     }
 
+
 @clothing_router.put("/clothing-items/{item_id}")
 async def update_clothing_item(
-    item_id: int, 
-    request: Request,
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)):
+        item_id: int,
+        request: Request,
+        db: Session = Depends(get_db),
+        token: str = Depends(oauth2_scheme)):
     current_user: User = get_current_user(token, db)
-    clothing_item = db.query(ClothingItem).filter(ClothingItem.id == item_id).first()
+    clothing_item = db.query(ClothingItem).filter(
+        ClothingItem.id == item_id).first()
 
     if not clothing_item:
         raise HTTPException(status_code=404, detail="Clothing item not found")
 
     # 🔐 Check if the clothing item belongs to the current user
     if clothing_item.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You are not allowed to update this item")
-    
+        raise HTTPException(
+            status_code=403, detail="You are not allowed to update this item")
+
     form_data = await request.json()  # or await request.form() if sending FormData
     try:
         updated_item = update_clothing_item_in_db(db, item_id, **form_data)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+        raise HTTPException(
+            status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
     update_synchronized_at(token, db)
     # Return all the fields that were updated
     return {
@@ -176,6 +183,7 @@ async def update_clothing_item(
         }
     }
 
+
 @clothing_router.put("/clothing-items/{clothing_item_id}/preview-remove-background")
 def preview_remove_clothing_item_background(
     clothing_item_id: int,
@@ -192,18 +200,21 @@ def preview_remove_clothing_item_background(
     if not clothing_item:
         raise HTTPException(status_code=404, detail="Clothing item not found")
 
-    new_filename, output_path = remove_background_preview(clothing_item.filename)
+    new_filename, output_path = remove_background_preview(
+        clothing_item.filename)
 
     return JSONResponse({
 
         "detail": "Background removed successfully.",
         "data": f"{SERVER_URL}/{output_path}"
-        })
+    })
+
 
 @clothing_router.put("/clothing-items/{clothing_item_id}/confirm-remove-background")
 def confirm_background_removal(
     clothing_item_id: int,
-    is_preview: bool,
+    is_preview: bool = Form(
+        description="Boolean parameter. Set to true if confirming the removal of the background preview, false to confirm the current file."),
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
@@ -222,17 +233,18 @@ def confirm_background_removal(
     update_synchronized_at(token, db)
     return {"detail": result["detail"], "new_filename": clothing_item.filename}
 
-    
+
 @clothing_router.put("/items/{item_id}/favorite", response_model=None)
 def favorite_item(
     item_id: int,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
-    current_user: User = get_current_user(token,db)
+    current_user: User = get_current_user(token, db)
     updated_item = mark_clothing_item_as_favorite(db, item_id, current_user.id)
     update_synchronized_at(token, db)
     return {"message": "Item marked as favorite", "item": updated_item.id}
+
 
 @clothing_router.put("/items/{item_id}/unfavorite", response_model=None)
 def favorite_item(
@@ -240,10 +252,12 @@ def favorite_item(
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
-    current_user: User = get_current_user(token,db)
-    updated_item = mark_clothing_item_as_unfavorite(db, item_id, current_user.id)
+    current_user: User = get_current_user(token, db)
+    updated_item = mark_clothing_item_as_unfavorite(
+        db, item_id, current_user.id)
     update_synchronized_at(token, db)
     return {"message": "Item marked as unfavorite", "item": updated_item.id}
+
 
 @clothing_router.get("/clothing-combinations")
 def get_user_combinations(
@@ -255,6 +269,7 @@ def get_user_combinations(
         "detail": "Clothing combinations fetched successfully.",
         "data": data
     }
+
 
 @clothing_router.post("/clothing-combinations")
 def create_clothing_combination(

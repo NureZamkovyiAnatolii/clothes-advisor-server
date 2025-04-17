@@ -1,8 +1,5 @@
-import json
-import os
 import pytest
 from fastapi.testclient import TestClient
-import io
 from app.main import app
 from app.database import SessionLocal, Base, engine, get_db
 from app.model import *
@@ -66,7 +63,7 @@ def test_update_clothing_item(db_session, auth_token):
     }
 
     # 3. PUT-запит
-    response = client.put(f"/clothing-items/{12}", json=update_payload, headers=auth_token)
+    response = client.put(f"/clothing-items/{1}", json=update_payload, headers=auth_token)
 
     # 4. Перевірка відповіді
     assert response.status_code == 200, response.text
