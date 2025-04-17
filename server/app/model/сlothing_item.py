@@ -17,10 +17,35 @@ class SeasonEnum(str, Enum):
     autumn = "autumn"
 
 class CategoryEnum(str, Enum):
-    tshirt = "tshirt"
-    pants = "pants"
-    jacket = "jacket"
-    dress = "dress"
+    tshirt = "tshirt"  # футболка
+    pants = "pants"  # штани
+    jacket = "jacket"  # жакет
+    dress = "dress"  # сукня
+    skirt = "skirt"  # спідниця
+    shorts = "shorts"  # шорти
+    hoodie = "hoodie"  # худі
+    sweater = "sweater"  # светр
+    coat = "coat"  # пальто
+    blouse = "blouse"  # блуза
+    shoes = "shoes"  # взуття
+    accessories = "accessories"  # аксесуари
+    boots = "boots"  # черевики
+    sneakers = "sneakers"  # кросівки
+    sandals = "sandals"  # сандалі
+    hat = "hat"  # капелюх
+    scarf = "scarf"  # шарф
+    gloves = "gloves"  # рукавички
+    socks = "socks"  # носки
+    underwear = "underwear"  # білизна
+    swimwear = "swimwear"  # купальник
+    belt = "belt"  # ремінь
+    bag = "bag"  # сумка
+    watch = "watch"  # годинник
+    jeans = "jeans"  # джинси
+    leggings = "leggings"  # легінси
+    tank_top = "tank_top"  # майка
+    overalls = "overalls"  # комбінезон
+    beanie = "beanie"  # шапка
 
 
 class ClothingItem(Base):

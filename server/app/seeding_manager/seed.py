@@ -108,50 +108,51 @@ def seed_clothing_items(db: Session):
         }
     ]
 
-    uploads_dir = os.path.join(os.getcwd(), "uploads")
     image_urls = [
-            "https://fahrenheit.ua/files/products/4x7a3262.1000x1000.jpg",
-            "https://lingerie.ua/files/product/0/19020/19020.jpg",
-            "https://preview.free3d.com/img/2014/08/2162617793575388491/fulrgt7a.jpg",
-            "https://tornado.kiev.ua/image/cache/catalog/image/cache/new/41210_2-1000x1200.webp"
-            
-        ]
+        "https://fahrenheit.ua/files/products/4x7a3262.1000x1000.jpg",
+        "https://lingerie.ua/files/product/0/19020/19020.jpg",
+        "https://preview.free3d.com/img/2014/08/2162617793575388491/fulrgt7a.jpg",
+        "https://tornado.kiev.ua/image/cache/catalog/image/cache/new/41210_2-1000x1200.webp"
+    ]
+
+    uploads_dir = os.path.join(os.getcwd(), "uploads")
     os.makedirs(uploads_dir, exist_ok=True)
 
-    for item_data in items_data:
-        
-        os.makedirs("uploads", exist_ok=True)
-        for idx, item_data in enumerate(items_data):
-            image_url = image_urls[idx]
-            dest_file = os.path.join("uploads", item_data["filename"])
+    for idx, item_data in enumerate(items_data):
+        image_url = image_urls[idx]
+        dest_file = os.path.join(uploads_dir, item_data["filename"])
 
-            if not os.path.exists(dest_file):
-                try:
-                    headers = {
-                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                                    "(KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-                    }
-                    response = requests.get(image_url, headers=headers)
-                    response.raise_for_status()
+        # Завантаження зображення
+        if not os.path.exists(dest_file):
+            try:
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                                  "(KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+                }
+                response = requests.get(image_url, headers=headers)
+                response.raise_for_status()
 
-                    with open(dest_file, "wb") as f:
-                        f.write(response.content)
+                with open(dest_file, "wb") as f:
+                    f.write(response.content)
 
-                    print(f"📥 Downloaded image as {item_data['filename']} to uploads/")
-                except Exception as e:
-                    print(f"❌ Failed to download image from {image_url}: {e}")
+                print(f"📥 Downloaded image as {item_data['filename']} to uploads/")
+            except Exception as e:
+                print(f"❌ Failed to download image from {image_url}: {e}")
+
+        # Перевірка, чи одяг уже існує
         existing = db.query(ClothingItem).filter_by(filename=item_data["filename"]).first()
         if existing:
             print(f"ℹ️ ClothingItem {item_data['filename']} already exists. Skipping.")
             continue
 
-        dest_file = os.path.join(uploads_dir, item_data["filename"])
-
-        
-
+        # Створення нового одягу
+        clothing_item = ClothingItem(**item_data)
+        db.add(clothing_item)
+        print(f"✅ Added ClothingItem: {item_data['name']}")
 
     db.commit()
     print("✅ Clothing items seeded.")
+
 
 def seed_clothing_combinations(db: Session):
     combinations_data = [

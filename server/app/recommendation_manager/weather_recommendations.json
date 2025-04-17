@@ -1,0 +1,418 @@
+{
+  "winter": {
+    "temperature_range": "-10 to 5",
+    "weather": [
+      "snow", 
+      "broken clouds", 
+      "cold", 
+      "icy winds", 
+      "frosty mornings", 
+      "heavy snow", 
+      "mist", 
+      "drizzle"
+    ]
+  },
+  "spring": {
+    "temperature_range": "5 to 20",
+    "weather": [
+      "few clouds", 
+      "shower rain", 
+      "mild", 
+      "occasional drizzle", 
+      "light rain", 
+      "cloudy", 
+      "mist", 
+      "thunderstorm"
+    ]
+  },
+  "summer": {
+    "temperature_range": "20 to 35",
+    "weather": [
+      "sunny", 
+      "clear sky", 
+      "hot", 
+      "occasional thunderstorm", 
+      "light rain", 
+      "mist", 
+      "haze", 
+      "heavy rain"
+    ]
+  },
+  "autumn": {
+    "temperature_range": "5 to 15",
+    "weather": [
+      "scattered clouds", 
+      "light rain", 
+      "windy", 
+      "cloudy", 
+      "falling leaves", 
+      "mist", 
+      "drizzle", 
+      "thunderstorm"
+    ]
+  },
+  "tshirt": {
+    "temperature_range": "20 to 25",
+    "weather": [
+      "sunny", 
+      "clear sky", 
+      "light breeze", 
+      "few clouds", 
+      "warm", 
+      "clear sky", 
+      "hot", 
+      "light rain"
+    ]
+  },
+  "pants": {
+    "temperature_range": "10 to 25",
+    "weather": [
+      "sunny", 
+      "scattered clouds", 
+      "comfortable", 
+      "mild", 
+      "light rain", 
+      "cloudy", 
+      "warm", 
+      "breezy"
+    ]
+  },
+  "jacket": {
+    "temperature_range": "5 to 15",
+    "weather": [
+      "cloudy", 
+      "windy", 
+      "chilly", 
+      "occasional drizzle", 
+      "shower rain", 
+      "cold breeze", 
+      "overcast", 
+      "fog"
+    ]
+  },
+  "dress": {
+    "temperature_range": "15 to 25",
+    "weather": [
+      "sunny", 
+      "clear sky", 
+      "mild", 
+      "pleasant", 
+      "cloudy", 
+      "occasional drizzle", 
+      "light rain", 
+      "thunderstorm"
+    ]
+  },
+  "skirt": {
+    "temperature_range": "15 to 25",
+    "weather": [
+      "sunny", 
+      "clear sky", 
+      "mild", 
+      "light breeze", 
+      "warm", 
+      "cloudy", 
+      "drizzle", 
+      "fog"
+    ]
+  },
+  "shorts": {
+    "temperature_range": "20 to 35",
+    "weather": [
+      "sunny", 
+      "hot", 
+      "clear sky", 
+      "haze", 
+      "heatwave", 
+      "dust", 
+      "cloudy", 
+      "dry"
+    ]
+  },
+  "hoodie": {
+    "temperature_range": "10 to 20",
+    "weather": [
+      "cloudy", 
+      "light rain", 
+      "mild", 
+      "cool", 
+      "windy", 
+      "mist", 
+      "overcast", 
+      "showers"
+    ]
+  },
+  "sweater": {
+    "temperature_range": "10 to 20",
+    "weather": [
+      "cloudy", 
+      "chilly", 
+      "occasional drizzle", 
+      "cold winds", 
+      "fog", 
+      "mist", 
+      "light rain", 
+      "broken clouds"
+    ]
+  },
+  "coat": {
+    "temperature_range": "0 to 10",
+    "weather": [
+      "snow", 
+      "heavy snow", 
+      "chilly", 
+      "mist", 
+      "rain", 
+      "sleet", 
+      "drizzle", 
+      "windy"
+    ]
+  },
+  "blouse": {
+    "temperature_range": "15 to 25",
+    "weather": [
+      "sunny", 
+      "clear sky", 
+      "mild", 
+      "light breeze", 
+      "pleasant", 
+      "cloudy", 
+      "light rain", 
+      "showers"
+    ]
+  },
+  "shoes": {
+    "temperature_range": "10 to 25",
+    "weather": [
+      "sunny", 
+      "mild", 
+      "light rain", 
+      "cloudy", 
+      "dry", 
+      "showers", 
+      "wet", 
+      "pleasant"
+    ]
+  },
+  "accessories": {
+    "temperature_range": "10 to 25",
+    "weather": [
+      "sunny", 
+      "mild", 
+      "clear sky", 
+      "cloudy", 
+      "windy", 
+      "light rain", 
+      "pleasant", 
+      "showers"
+    ]
+  },
+  "boots": {
+    "temperature_range": "-5 to 10",
+    "weather": [
+      "snow", 
+      "heavy snow", 
+      "cold", 
+      "mist", 
+      "sleet", 
+      "drizzle", 
+      "rain", 
+      "windy"
+    ]
+  },
+  "sneakers": {
+    "temperature_range": "15 to 30",
+    "weather": [
+      "sunny", 
+      "clear sky", 
+      "hot", 
+      "haze", 
+      "clear sky", 
+      "mild", 
+      "pleasant", 
+      "dry"
+    ]
+  },
+  "sandals": {
+    "temperature_range": "20 to 35",
+    "weather": [
+      "sunny", 
+      "hot", 
+      "clear sky", 
+      "heatwave", 
+      "dry", 
+      "haze", 
+      "cloudy", 
+      "dust"
+    ]
+  },
+  "hat": {
+    "temperature_range": "10 to 30",
+    "weather": [
+      "sunny", 
+      "clear sky", 
+      "hot", 
+      "haze", 
+      "clear sky", 
+      "mild", 
+      "windy", 
+      "pleasant"
+    ]
+  },
+  "scarf": {
+    "temperature_range": "-5 to 15",
+    "weather": [
+      "cold", 
+      "windy", 
+      "mist", 
+      "snow", 
+      "drizzle", 
+      "cloudy", 
+      "chilly", 
+      "heavy snow"
+    ]
+  },
+  "gloves": {
+    "temperature_range": "-10 to 10",
+    "weather": [
+      "cold", 
+      "snowy", 
+      "light snow", 
+      "drizzle", 
+      "heavy snow", 
+      "chilly", 
+      "windy", 
+      "overcast"
+    ]
+  },
+  "socks": {
+    "temperature_range": "0 to 30",
+    "weather": [
+      "mild", 
+      "cold", 
+      "hot", 
+      "windy", 
+      "rainy", 
+      "foggy", 
+      "cloudy", 
+      "clear sky"
+    ]
+  },
+  "underwear": {
+    "temperature_range": "0 to 35",
+    "weather": [
+      "all-weather", 
+      "sunny", 
+      "cloudy", 
+      "hot", 
+      "cold", 
+      "rainy", 
+      "mild", 
+      "windy"
+    ]
+  },
+  "swimwear": {
+    "temperature_range": "20 to 35",
+    "weather": [
+      "sunny", 
+      "hot", 
+      "clear sky", 
+      "haze", 
+      "heatwave", 
+      "cloudy", 
+      "dry", 
+      "sweltering"
+    ]
+  },
+  "belt": {
+    "temperature_range": "10 to 30",
+    "weather": [
+      "sunny", 
+      "mild", 
+      "clear sky", 
+      "cloudy", 
+      "windy", 
+      "light rain", 
+      "pleasant", 
+      "showers"
+    ]
+  },
+  "bag": {
+    "temperature_range": "10 to 30",
+    "weather": [
+      "all-weather", 
+      "sunny", 
+      "cloudy", 
+      "windy", 
+      "mild", 
+      "showers", 
+      "dry", 
+      "rainy"
+    ]
+  },
+  "watch": {
+    "temperature_range": "0 to 35",
+    "weather": [
+      "all-weather", 
+      "mild", 
+      "sunny", 
+      "cloudy", 
+      "rainy", 
+      "hot", 
+      "cold", 
+      "foggy"
+    ]
+  },
+  "jeans": {
+    "temperature_range": "10 to 25",
+    "weather": [
+      "sunny", 
+      "cloudy", 
+      "mild", 
+      "pleasant", 
+      "showers", 
+      "rainy", 
+      "windy", 
+      "light rain"
+    ]
+  },
+  "leggings": {
+    "temperature_range": "10 to 25",
+    "weather": [
+      "sunny", 
+      "cloudy", 
+      "mild", 
+      "windy", 
+      "rainy", 
+      "light rain", 
+      "clear sky", 
+      "pleasant"
+    ]
+  },
+  "tank_top": {
+    "temperature_range": "20 to 35",
+    "weather": [
+      "sunny", 
+      "clear sky", 
+      "hot", 
+      "haze", 
+      "clear sky", 
+      "dry", 
+      "heatwave", 
+      "cloudy"
+    ]
+  },
+  "overalls": {
+    "temperature_range": "15 to 25",
+    "weather": [
+      "sunny", 
+      "clear sky", 
+      "warm", 
+      "mild", 
+      "cloudy", 
+      "light rain", 
+      "pleasant", 
+      "showers"
+    ]
+  }
+}
