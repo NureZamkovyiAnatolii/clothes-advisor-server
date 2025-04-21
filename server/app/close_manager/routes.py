@@ -125,7 +125,7 @@ async def add_clothing_item(
         "detail": "Clothing item added successfully.",
         "data": {
             "id": new_clothing_item.id,
-            "filename": new_clothing_item.filename,
+            "filename": f"{SERVER_URL}/uploads/{new_clothing_item.filename}",
             "name": new_clothing_item.name,
             "category": new_clothing_item.category,
             "season": new_clothing_item.season,
@@ -188,9 +188,10 @@ async def update_clothing_item(
     # Оновлюємо об'єкт
     for key, value in updated_fields.items():
         setattr(clothing_item, key, value)
+        logging.info(f"Updated {key} to {value}")
 
     old_filename = clothing_item.filename
-    if file:
+    if file is not None:
         from app.close_manager.clothing_controller import save_file
         saved_filename = save_file(file)
         clothing_item.filename = saved_filename
@@ -206,7 +207,7 @@ async def update_clothing_item(
                 except Exception as e:
                     logging.info(f"Error deleting file {file_path}: {e}")
     else:
-        logging.info(f"File {file_path} does not exist")
+        logging.info("No new file uploaded; skipping file deletion.")
     db.commit()
     db.refresh(clothing_item)
     update_synchronized_at(token, db)

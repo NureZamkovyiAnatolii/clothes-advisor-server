@@ -61,14 +61,14 @@ def test_update_clothing_item(db_session, auth_token):
         "price": "39.99",
         "is_favorite": True
     }
-
+    files = None
     # 3. PUT-запит
-    response = client.put(f"/clothing-items/{1}", json=update_payload, headers=auth_token)
+    response = client.put(f"/clothing-items/{13}", json=update_payload, files=files, headers=auth_token)
 
     # 4. Перевірка відповіді
     assert response.status_code == 200, response.text
     data = response.json()
-    assert data["updated_item"]["name"] == "Updated Shirt"
-    assert data["updated_item"]["price"] == 39.99
-    assert data["updated_item"]["is_favorite"] is True
-    assert data["updated_item"]["brand"] == "Uniqlo"
+    assert data["data"]["name"] == "Updated Shirt"
+    assert data["data"]["price"] == 39.99
+    assert data["data"]["is_favorite"] is True
+    assert data["data"]["brand"] == "Uniqlo"
