@@ -327,8 +327,16 @@ def synchronize_user_data(
     current_user.synchronized_at = datetime.now(timezone.utc)
     db.commit()
 
-    # Перетворення мап у список словників
-    item_id_mapping_list = [{"old": old_id, "new": new_id} for old_id, new_id in old_to_new_items_map.items()]
+    # Перетворення мап у список словників з додаванням нового шляху до файлу
+    item_mapping_list = [
+        {
+            "old": old_id, 
+            "new": new_id, 
+            "new_file": f"{SERVER_URL}/uploads/{filename_map.get(item['filename'], '')}"
+        } 
+        for old_id, new_id in old_to_new_items_map.items()
+    ]
+
     combo_id_mapping_list = [{"old": old_id, "new": new_id} for old_id, new_id in old_to_new_combos_map.items()]
 
     return JSONResponse(
@@ -337,11 +345,12 @@ def synchronize_user_data(
             "detail": "Synchronized data updated",
             "data": {
                 "synchronized_at": current_user.synchronized_at.isoformat(),
-                "item_id_mapping": item_id_mapping_list,
+                "item_mapping": item_mapping_list,
                 "combo_id_mapping": combo_id_mapping_list,
                 "file_mapping": saved_filenames  # 🆕 Added this part
             }
-        })
+        }
+    )
 
 def update_synchronized_at(token: str, db: Session):
     current_user = get_current_user(token, db)
