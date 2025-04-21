@@ -125,7 +125,7 @@ async def add_clothing_item(
         "detail": "Clothing item added successfully.",
         "data": {
             "id": new_clothing_item.id,
-            "filename": f"{SERVER_URL}/uploads/{new_clothing_item.filename}",
+           "filename": f"{SERVER_URL}/uploads/{new_clothing_item.filename}",
             "name": new_clothing_item.name,
             "category": new_clothing_item.category,
             "season": new_clothing_item.season,
@@ -143,15 +143,34 @@ async def add_clothing_item(
     }
 
 
-@clothing_router.put("/clothing-items/{item_id}")
+@clothing_router.put("/clothing-items/{item_id}", summary="Update existing clothing item")
 async def update_clothing_item(
-        item_id: int,
-        request: Request,
-        file: UploadFile = File(None),
-        db: Session = Depends(get_db),
-        token: str = Depends(oauth2_scheme)):
+    item_id: int,
+    file: UploadFile = File(None),
+    name: str = Form(...),
+    category: str = Form(...),
+    season: str = Form(...),
+    red: Optional[str] = Form(),
+    green: Optional[str] = Form(),
+    blue: Optional[str] = Form(),
+    material: str = Form(...),
+    brand: str = Form(),
+    purchase_date: str = Form(),
+    price: float = Form(),
+    is_favorite: bool = Form(False),
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    """
+    **Updates a clothing item.**
 
+    - **Headers**: `Authorization: Bearer <token>`
+    - If a new image is uploaded, the old one will be removed.
+    """
+    # Отримуємо поточного користувача
     current_user: User = get_current_user(token, db)
+
+    # Шукаємо елемент одягу
     clothing_item = db.query(ClothingItem).filter(ClothingItem.id == item_id).first()
 
     if not clothing_item:
@@ -160,64 +179,57 @@ async def update_clothing_item(
     if clothing_item.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="You are not allowed to update this item")
 
-    form_data = await request.form()
-    updated_fields = {}
-
-    for key in form_data.keys():
-        value = form_data.get(key)
-        if key in ["red", "green", "blue"]:
-            try:
-                updated_fields[key] = int(value)
-            except ValueError:
-                raise HTTPException(status_code=400, detail=f"Invalid value for {key}")
-        elif key == "price":
-            try:
-                updated_fields[key] = float(value)
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid price format")
-        elif key == "purchase_date":
-            try:
-                updated_fields[key] = datetime.strptime(value, "%Y-%m-%d").date()
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
-        elif key == "is_favorite":
-            updated_fields[key] = value.lower() == "true"
+    # 🔄 Обробка кольорів
+    if not red or not green or not blue:
+        if file:
+            red, green, blue = get_dominant_color(file)
         else:
-            updated_fields[key] = value
+            red, green, blue = clothing_item.red, clothing_item.green, clothing_item.blue
+    else:
+        try:
+            red = int(red)
+            green = int(green)
+            blue = int(blue)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid color values")
 
-    # Оновлюємо об'єкт
-    for key, value in updated_fields.items():
-        setattr(clothing_item, key, value)
-        logging.info(f"Updated {key} to {value}")
+    # 🔄 Оновлення інших полів
+    clothing_item.name = name
+    clothing_item.category = category
+    clothing_item.season = season
+    clothing_item.red = red
+    clothing_item.green = green
+    clothing_item.blue = blue
+    clothing_item.material = material
+    clothing_item.brand = brand
+    clothing_item.purchase_date = datetime.strptime(purchase_date, "%Y-%m-%d").date() if purchase_date else None
+    clothing_item.price = price
+    clothing_item.is_favorite = is_favorite
 
-    old_filename = clothing_item.filename
-    if file is not None:
-        from app.close_manager.clothing_controller import save_file
-        saved_filename = save_file(file)
-        clothing_item.filename = saved_filename
+    # 📁 Видалення старого файлу та збереження нового
+    if file:
+        old_filename = clothing_item.filename
+        filename = save_file(file)
+        clothing_item.filename = filename
 
         if old_filename:
-            # Оновлений шлях до файлу
-            file_path = os.path.join("uploads", old_filename)
-            logging.info(f"Attempting to delete file: {file_path}")  # Додано для дебагу
-            if os.path.exists(file_path):
+            old_file_path = os.path.join("uploads", old_filename)
+            if os.path.exists(old_file_path):
                 try:
-                    os.remove(file_path)
-                    logging.info(f"File {file_path} deleted successfully")
+                    os.remove(old_file_path)
                 except Exception as e:
-                    logging.info(f"Error deleting file {file_path}: {e}")
-    else:
-        logging.info("No new file uploaded; skipping file deletion.")
+                    logging.warning(f"Failed to delete old file: {e}")
+
     db.commit()
     db.refresh(clothing_item)
     update_synchronized_at(token, db)
 
     return {
-        "detail": "Item updated successfully",
+        "detail": "Clothing item updated successfully.",
         "data": {
             "id": clothing_item.id,
-            "name": clothing_item.name,
             "filename": f"{SERVER_URL}/uploads/{clothing_item.filename}",
+            "name": clothing_item.name,
             "category": clothing_item.category,
             "season": clothing_item.season,
             "red": clothing_item.red,
@@ -231,6 +243,7 @@ async def update_clothing_item(
             "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None,
         }
     }
+
 
 
 @clothing_router.put("/clothing-items/{clothing_item_id}/preview-remove-background")

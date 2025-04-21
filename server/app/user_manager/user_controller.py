@@ -326,16 +326,18 @@ def synchronize_user_data(
 
     current_user.synchronized_at = datetime.now(timezone.utc)
     db.commit()
-
     # Перетворення мап у список словників з додаванням нового шляху до файлу
+    id_to_filename = {item['id']: item['filename'] for item in items_data}
+
+# Формуємо фінальний список з URL
     item_mapping_list = [
-        {
-            "old": old_id, 
-            "new": new_id, 
-            "new_file": f"{SERVER_URL}/uploads/{filename_map.get(item['filename'], '')}"
-        } 
-        for old_id, new_id in old_to_new_items_map.items()
-    ]
+    {
+        "old": old_id,
+        "new": new_id,
+        "new_file": f"{saved_filename}"
+    }
+    for (old_id, new_id), saved_filename in zip(old_to_new_items_map.items(), saved_filenames)
+]
 
     combo_id_mapping_list = [{"old": old_id, "new": new_id} for old_id, new_id in old_to_new_combos_map.items()]
 
