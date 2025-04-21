@@ -272,7 +272,7 @@ def synchronize_user_data(
         from app.close_manager.clothing_controller import save_file
         saved_name = save_file(file)
         filename_map[file.filename] = saved_name  # запам’ятовуємо, під якою назвою зберегли
-        saved_filenames.append(saved_name)
+        saved_filenames.append(f"{SERVER_URL}/uploads/{saved_name}")
 
     old_to_new_items_map = {}  # Мапа старих ID до нових
 
