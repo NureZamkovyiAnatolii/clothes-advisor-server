@@ -47,7 +47,7 @@ def get_weather_at_time(location: str, target_time: str, api_key: str = "9eb8fb2
 def load_clothing_weather_conditions():
     base_path = os.path.dirname(__file__)
     full_path = os.path.join(base_path, "weather_recommendations.json")
-    logging.info(f"Завантаження файлу з {full_path}")
+    logging.info(f"Using file  {full_path}")
     with open(full_path, "r") as file:
         return json.load(file)
 
@@ -146,18 +146,18 @@ def check_clothing_for_weather(location: str, target_time: str, clothing_conditi
 # target_time = "2025-03-31 15:00:00"  # Задайте бажану дату та час
 # print(get_weather_at_time(location, target_time))
 
-clothing_conditions = load_clothing_weather_conditions()
-# Запит сезон і категорії одягу
-season = "summer"
-category = "jacket"
+# clothing_conditions = load_clothing_weather_conditions()
+# # Запит сезон і категорії одягу
+# season = "summer"
+# category = "jacket"
 
-result = get_weather_intersection(season, category, clothing_conditions)
+# result = get_weather_intersection(season, category, clothing_conditions)
 
-if isinstance(result, dict):
-    print(f"Перехрестя температур: {result['temperature_range']}")
-    print(f"Об'єднані погодні умови: {result['weather']}")
-else:
-    print(result)
+# if isinstance(result, dict):
+#     print(f"Перехрестя температур: {result['temperature_range']}")
+#     print(f"Об'єднані погодні умови: {result['weather']}")
+# else:
+#     print(result)
 
 
 # Приклад використання
