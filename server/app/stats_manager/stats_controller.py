@@ -6,19 +6,19 @@ from app.user_manager.user_controller import get_current_user
 
 def get_clothing_stats_by_category(db: Session, token: str):
     """
-    Повертає статистику одягу за категоріями:
-    - кількість речей
-    - середній вік (у днях) при наявності дати покупки
+    Returns clothing statistics by categories:
+    - item count
+    - average age (in days) if purchase date is available
 
-    :param db: Сесія SQLAlchemy
-    :param token: JWT токен користувача
-    :return: Список словників: [{"category": "верхній одяг", "count": 3, "average_age_days": 285.2}, ...]
+    :param db: SQLAlchemy session
+    :param token: User's JWT token
+    :return: List of dictionaries: [{"category": "outerwear", "count": 3, "average_age_days": 285.2}, ...]
     """
 
     user = get_current_user(token, db)
     today = date.today()
 
-    # Підзапит для середнього віку з використанням DATEDIFF для MySQL
+    # Subquery for average age using DATEDIFF for MySQL
     avg_age_subquery = (
         db.query(
             ClothingItem.category.label("category"),
@@ -32,7 +32,7 @@ def get_clothing_stats_by_category(db: Session, token: str):
         .subquery()
     )
 
-    # Основний запит: кількість + середній вік (через join)
+    # Main query: count + average age (via join)
     results = (
         db.query(
             ClothingItem.category,

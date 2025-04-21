@@ -80,7 +80,7 @@ async def add_clothing_item(
     try:
         # Get the user ID from the token
         owner_id = get_current_user_id(token, db)
-    
+
     except HTTPException as e:
         # If an error occurs (e.g., invalid token or user not found)
         raise e  # Simply raise the exception so FastAPI can respond to the client
@@ -138,6 +138,7 @@ async def add_clothing_item(
             "price": new_clothing_item.price,
             "is_favorite": new_clothing_item.is_favorite,
             "owner_id": new_clothing_item.owner_id,
+            "synchronized_at": get_current_user(token, db).synchronized_at.isoformat() if get_current_user(token, db).synchronized_at else None,
         }
     }
 
@@ -146,43 +147,87 @@ async def add_clothing_item(
 async def update_clothing_item(
         item_id: int,
         request: Request,
+        file: UploadFile = File(None),
         db: Session = Depends(get_db),
         token: str = Depends(oauth2_scheme)):
+
     current_user: User = get_current_user(token, db)
-    clothing_item = db.query(ClothingItem).filter(
-        ClothingItem.id == item_id).first()
+    clothing_item = db.query(ClothingItem).filter(ClothingItem.id == item_id).first()
 
     if not clothing_item:
         raise HTTPException(status_code=404, detail="Clothing item not found")
 
-    # 🔐 Check if the clothing item belongs to the current user
     if clothing_item.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=403, detail="You are not allowed to update this item")
+        raise HTTPException(status_code=403, detail="You are not allowed to update this item")
 
-    form_data = await request.json()  # or await request.form() if sending FormData
-    try:
-        updated_item = update_clothing_item_in_db(db, item_id, **form_data)
-    except ValueError:
-        raise HTTPException(
-            status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    form_data = await request.form()
+    updated_fields = {}
+
+    for key in form_data.keys():
+        value = form_data.get(key)
+        if key in ["red", "green", "blue"]:
+            try:
+                updated_fields[key] = int(value)
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid value for {key}")
+        elif key == "price":
+            try:
+                updated_fields[key] = float(value)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid price format")
+        elif key == "purchase_date":
+            try:
+                updated_fields[key] = datetime.strptime(value, "%Y-%m-%d").date()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+        elif key == "is_favorite":
+            updated_fields[key] = value.lower() == "true"
+        else:
+            updated_fields[key] = value
+
+    # Оновлюємо об'єкт
+    for key, value in updated_fields.items():
+        setattr(clothing_item, key, value)
+
+    old_filename = clothing_item.filename
+    if file:
+        from app.close_manager.clothing_controller import save_file
+        saved_filename = save_file(file)
+        clothing_item.filename = saved_filename
+
+        if old_filename:
+            # Оновлений шлях до файлу
+            file_path = os.path.join("uploads", old_filename)
+            logging.info(f"Attempting to delete file: {file_path}")  # Додано для дебагу
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    logging.info(f"File {file_path} deleted successfully")
+                except Exception as e:
+                    logging.info(f"Error deleting file {file_path}: {e}")
+    else:
+        logging.info(f"File {file_path} does not exist")
+    db.commit()
+    db.refresh(clothing_item)
     update_synchronized_at(token, db)
-    # Return all the fields that were updated
+
     return {
-        "message": "Item updated successfully",
-        "updated_item": {
-            "id": updated_item.id,
-            "name": updated_item.name,
-            "category": updated_item.category,
-            "season": updated_item.season,
-            "red": updated_item.red,
-            "green": updated_item.green,
-            "blue": updated_item.blue,
-            "material": updated_item.material,
-            "brand": updated_item.brand,
-            "purchase_date": updated_item.purchase_date.isoformat() if updated_item.purchase_date else None,
-            "price": updated_item.price,
-            "is_favorite": updated_item.is_favorite,
+        "detail": "Item updated successfully",
+        "data": {
+            "id": clothing_item.id,
+            "name": clothing_item.name,
+            "filename": f"{SERVER_URL}/uploads/{clothing_item.filename}",
+            "category": clothing_item.category,
+            "season": clothing_item.season,
+            "red": clothing_item.red,
+            "green": clothing_item.green,
+            "blue": clothing_item.blue,
+            "material": clothing_item.material,
+            "brand": clothing_item.brand,
+            "purchase_date": clothing_item.purchase_date.isoformat() if clothing_item.purchase_date else None,
+            "price": clothing_item.price,
+            "is_favorite": clothing_item.is_favorite,
+            "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None,
         }
     }
 
@@ -234,7 +279,11 @@ def confirm_background_removal(
     # Викликаємо функцію для видалення файлу за ID
     result = remove_file_by_clothing_item_id(clothing_item_id, is_preview, db)
     update_synchronized_at(token, db)
-    return {"detail": result["detail"], "new_filename": clothing_item.filename}
+    return {
+        "detail": result["detail"],
+            "data": {
+                "new_filename": clothing_item.filename},
+                "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None, }
 
 
 @clothing_router.put("/items/{item_id}/favorite", response_model=None)
@@ -246,11 +295,14 @@ def favorite_item(
     current_user: User = get_current_user(token, db)
     updated_item = mark_clothing_item_as_favorite(db, item_id, current_user.id)
     update_synchronized_at(token, db)
-    return {"message": "Item marked as favorite", "item": updated_item.id}
+    return {"detail": "Item marked as favorite", "data":{
+
+    "item": updated_item.id},
+    "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None, }
 
 
 @clothing_router.put("/items/{item_id}/unfavorite", response_model=None)
-def favorite_item(
+def unfavorite_item(
     item_id: int,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
@@ -259,7 +311,10 @@ def favorite_item(
     updated_item = mark_clothing_item_as_unfavorite(
         db, item_id, current_user.id)
     update_synchronized_at(token, db)
-    return {"message": "Item marked as unfavorite", "item": updated_item.id}
+    return {"detail": "Item marked as unfavorite", "data":{
+
+    "item": updated_item.id},
+    "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None, }
 
 
 @clothing_router.get("/clothing-combinations")
@@ -294,5 +349,6 @@ def create_clothing_combination(
     update_synchronized_at(token, db)
     return {
         "detail": "Clothing combination created successfully.",
-        "combination_id": combination.id
+        "combination_id": combination.id,
+          "synchronized_at": get_current_user(token, db).synchronized_at.isoformat() if get_current_user(token, db).synchronized_at else None
     }

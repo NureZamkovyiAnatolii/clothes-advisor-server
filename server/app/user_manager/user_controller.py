@@ -267,10 +267,12 @@ def synchronize_user_data(
 
     # 2. Додати нові речі
     filename_map = {}
+    saved_filenames = []
     for file in files:
         from app.close_manager.clothing_controller import save_file
         saved_name = save_file(file)
         filename_map[file.filename] = saved_name  # запам’ятовуємо, під якою назвою зберегли
+        saved_filenames.append(saved_name)
 
     old_to_new_items_map = {}  # Мапа старих ID до нових
 
@@ -336,7 +338,8 @@ def synchronize_user_data(
             "data": {
                 "synchronized_at": current_user.synchronized_at.isoformat(),
                 "item_id_mapping": item_id_mapping_list,
-                "combo_id_mapping": combo_id_mapping_list
+                "combo_id_mapping": combo_id_mapping_list,
+                "file_mapping": saved_filenames  # 🆕 Added this part
             }
         })
 
