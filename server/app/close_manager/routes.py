@@ -76,16 +76,20 @@ async def add_clothing_item(
         - `401 Unauthorized`: User is not authenticated.
         - `422 Unprocessable Entity`: Image processing error or missing required parameters.
     """
-    # Save the file to the server
-    filename = save_file(file)
     # Get the user ID via the token
     try:
         # Get the user ID from the token
         owner_id = get_current_user_id(token, db)
-
+    
     except HTTPException as e:
         # If an error occurs (e.g., invalid token or user not found)
         raise e  # Simply raise the exception so FastAPI can respond to the client
+    # ✅ Checking the number of user items
+    item_count = db.query(ClothingItem).filter(
+        ClothingItem.owner_id == owner_id).count()
+    if item_count >= MAX_CLOTHING_ITEMS_COUNT:
+        raise HTTPException(
+            status_code=400, detail="Item limit reached. Maximum 100 clothing items allowed per user.")
     # If color is not specified, determine it automatically
     if not red or not green or not blue:
         # Call get_dominant_color with the file
@@ -97,7 +101,8 @@ async def add_clothing_item(
             blue = int(blue)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid color values")
-
+    # Save the file to the server
+    filename = save_file(file)
     # Call the function to add the item to the database
     new_clothing_item = add_clothing_item_to_db(
         db,
@@ -124,11 +129,9 @@ async def add_clothing_item(
             "name": new_clothing_item.name,
             "category": new_clothing_item.category,
             "season": new_clothing_item.season,
-            "color": {
-                "red": new_clothing_item.red,
-                "green": new_clothing_item.green,
-                "blue": new_clothing_item.blue
-            },
+            "red": new_clothing_item.red,
+            "green": new_clothing_item.green,
+            "blue": new_clothing_item.blue,
             "material": new_clothing_item.material,
             "brand": new_clothing_item.brand,
             "purchase_date": new_clothing_item.purchase_date,
