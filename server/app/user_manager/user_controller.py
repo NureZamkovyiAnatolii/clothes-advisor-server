@@ -16,6 +16,7 @@ from fastapi.security import OAuth2PasswordBearer
 from app.user_manager.mail_controller import send_password_change_form, send_verification_link
 from app.model import *
 
+
 # Налаштування логування
 logging.basicConfig(level=logging.DEBUG)
 
@@ -247,7 +248,6 @@ def synchronize_user_data(
     logging.debug("combos_data: %s, type: %s", combos_data, type(combos_data))
 
 
-
     current_user = get_current_user(token, db)
     
     # 1. Видалити старі речі та комбінації користувача
@@ -264,13 +264,16 @@ def synchronize_user_data(
     print(f"🧹 Cleared old items and combinations for user {current_user.email}")
 
     # 2. Додати нові речі
-    filename_map = {}
-    saved_filenames = []
+    saved_filenames = {}
+
     for file in files:
-        from app.close_manager.clothing_controller import save_file
+        original_name = file.filename
+        from app.close_manager import save_file
+        # Якщо save_file приймає UploadFile — просто передай його
         saved_name = save_file(file)
-        filename_map[file.filename] = saved_name  # запам’ятовуємо, під якою назвою зберегли
-        saved_filenames.append(f"{SERVER_URL}/uploads/{saved_name}")
+
+        saved_filenames[original_name] = saved_name
+        logging.debug(f"File '{original_name}' saved as '{saved_filenames[original_name]}'")
 
     old_to_new_items_map = {}  # Мапа старих ID до нових
 
@@ -284,8 +287,8 @@ def synchronize_user_data(
 
         # Оновлюємо назву файлу, якщо є така у мапі
         original_filename = item.get("filename")
-        if original_filename in filename_map:
-            item_data_cleaned["filename"] = filename_map[original_filename]
+        if original_filename in saved_filenames:
+            item_data_cleaned["filename"] = saved_filenames[original_filename]  # ✅ тепер працює правильно
 
         # Створюємо новий об’єкт з прив’язкою до користувача
         new_item = ClothingItem(**item_data_cleaned, owner_id=current_user.id)
@@ -339,12 +342,6 @@ def synchronize_user_data(
     return JSONResponse(
         status_code=200,
         content={
-            "detail": "Synchronized data updated",
-            "data": {
-                "item_mapping": item_mapping_list,
-                "combo_id_mapping": combo_id_mapping_list,
-                "file_mapping": saved_filenames  # 🆕 Added this part
-            },
              "synchronized_at": current_user.synchronized_at_iso
         }
     )
