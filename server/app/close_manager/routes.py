@@ -138,8 +138,8 @@ async def add_clothing_item(
             "price": new_clothing_item.price,
             "is_favorite": new_clothing_item.is_favorite,
             "owner_id": new_clothing_item.owner_id,
-            "synchronized_at": get_current_user(token, db).synchronized_at.isoformat() if get_current_user(token, db).synchronized_at else None,
-        }
+        },
+        "synchronized_at": get_current_user(token, db).synchronized_at_iso
     }
 
 
@@ -238,9 +238,9 @@ async def update_clothing_item(
             "brand": clothing_item.brand,
             "purchase_date": clothing_item.purchase_date.isoformat() if clothing_item.purchase_date else None,
             "price": clothing_item.price,
-            "is_favorite": clothing_item.is_favorite,
-            "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None,
-        }
+            "is_favorite": clothing_item.is_favorite, 
+        },
+        "synchronized_at": current_user.synchronized_at_iso
     }
 
 
@@ -295,7 +295,7 @@ def confirm_background_removal(
         "detail": result["detail"],
             "data": {
                 "new_filename": clothing_item.filename},
-                "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None, }
+        "synchronized_at": current_user.synchronized_at_iso}
 
 
 @clothing_router.put("/items/{item_id}/toggle-favorite", response_model=None)
@@ -323,12 +323,11 @@ def toggle_favorite_item(
     update_synchronized_at(token, db)
 
     return {
-        "detail": f"Item {'added to' if clothing_item.is_favorite else 'removed from'} favorites",
+        "detail": f"Item with {item_id}{'added to' if clothing_item.is_favorite else 'removed from'} favorites",
         "data": {
-            "item": clothing_item.id,
             "is_favorite": clothing_item.is_favorite
         },
-        "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None
+        "synchronized_at": current_user.synchronized_at_iso
     }
 
 @clothing_router.delete("/clothing-items/{item_id}", summary="Delete clothing item")
@@ -369,7 +368,8 @@ async def delete_clothing_item(
     db.commit()
     update_synchronized_at(token, db)
 
-    return {"detail": f"Clothing item with id {item_id} deleted successfully."}
+    return {"detail": f"Clothing item with id {item_id} deleted successfully.",
+        "synchronized_at": current_user.synchronized_at_iso}
 
 @clothing_router.get("/clothing-combinations")
 def get_user_combinations(
@@ -404,5 +404,5 @@ def create_clothing_combination(
     return {
         "detail": "Clothing combination created successfully.",
         "combination_id": combination.id,
-          "synchronized_at": get_current_user(token, db).synchronized_at.isoformat() if get_current_user(token, db).synchronized_at else None
+        "synchronized_at": get_current_user(token,db).synchronized_at_iso
     }

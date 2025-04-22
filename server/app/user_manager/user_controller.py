@@ -341,11 +341,11 @@ def synchronize_user_data(
         content={
             "detail": "Synchronized data updated",
             "data": {
-                "synchronized_at": current_user.synchronized_at.isoformat(),
                 "item_mapping": item_mapping_list,
                 "combo_id_mapping": combo_id_mapping_list,
                 "file_mapping": saved_filenames  # 🆕 Added this part
-            }
+            },
+             "synchronized_at": current_user.synchronized_at_iso
         }
     )
 
@@ -358,7 +358,7 @@ def update_synchronized_at(token: str, db: Session):
         content={
             "detail": "Synchronized at updated",
             "data": {
-                "synchronized_at": current_user.synchronized_at.isoformat()
+                 "synchronized_at": current_user.synchronized_at_iso
             }
         }
     )
@@ -395,7 +395,7 @@ def get_user_data(token: str, db: Session):
         "data": {
             "items": items_data,
             "combinations": combo_ids,
-            "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None, 
+            "synchronized_at": current_user.synchronized_at_iso
         }
     })
 def is_user_verified(user_id, db: Session) -> bool:

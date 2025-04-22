@@ -16,10 +16,17 @@ class User(Base):
 
     combinations = relationship("ClothingCombination", back_populates="owner")
 
+    @property
+    def synchronized_at_iso(self) -> str | None:
+        """Returns synchronized_at in ISO 8601 format or None."""
+        return self.synchronized_at.isoformat() if self.synchronized_at else None
+    
     # Додати метод для серіалізації об'єкта в словник
     def to_dict(self):
         return {
             "id": self.id,
             "email": self.email,
         }
+    
+
 

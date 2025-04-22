@@ -160,8 +160,7 @@ def get_profile(token: str = Depends(oauth2_scheme), db: Session = Depends(get_d
             "data": {
                 "id": current_user.id,
                 "email": current_user.email,
-                "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None
-
+                "synchronized_at": current_user.synchronized_at_iso
             }
         }
     )
