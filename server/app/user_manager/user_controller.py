@@ -391,9 +391,9 @@ def get_user_data(token: str, db: Session):
         "detail": "All data retrieved successfully",
         "data": {
             "items": items_data,
-            "combinations": combo_ids,
+            "combinations": combo_ids
+        },
             "synchronized_at": current_user.synchronized_at_iso
-        }
     })
 def is_user_verified(user_id, db: Session) -> bool:
     user = db.query(User).filter(User.id == user_id).first()
