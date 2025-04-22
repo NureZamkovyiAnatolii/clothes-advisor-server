@@ -113,7 +113,7 @@ async def create_user(db: Session, email: str, password: str, locale: str):
         )
 
 
-# 🔹 Authenticate user and generate JWT token
+# 🔹 Generate JWT token
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     expire = datetime.now(
@@ -121,9 +121,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})  # Додаємо час дії токену
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# 🔹 Аутентифікація користувача та створення JWT-токена
-
-
+# 🔹 Authenticate user and generate JWT token
 def authenticate_user(db: Session, email: str, password: str):
     user = db.query(User).filter(User.email == email).first()
     logging.debug(f"Retrieved user: {user}")
@@ -326,9 +324,6 @@ def synchronize_user_data(
 
     current_user.synchronized_at = datetime.now(timezone.utc)
     db.commit()
-    # Перетворення мап у список словників з додаванням нового шляху до файлу
-    id_to_filename = {item['id']: item['filename'] for item in items_data}
-
 # Формуємо фінальний список з URL
     item_mapping_list = [
     {

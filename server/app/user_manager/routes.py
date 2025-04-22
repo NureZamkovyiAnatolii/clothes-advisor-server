@@ -191,15 +191,15 @@ async def sync_data(db: Session = Depends(get_db), token: str = Depends(oauth2_s
                     clothing_combinations: str = Form(...),
                     files: Optional[List[UploadFile]] = File(None),
                     is_server_to_local: bool = Form(True),):
-    if is_server_to_local:
-        return get_user_data(token=token, db=db)      
-    else:
-        return synchronize_user_data(
+    if not is_server_to_local:
+        synchronize_user_data(
             db=db,
             token=token,
             clothing_items=clothing_items,
             clothing_combinations=clothing_combinations,
             files=files)
+    
+    return get_user_data(token=token, db=db)     
         
 
 

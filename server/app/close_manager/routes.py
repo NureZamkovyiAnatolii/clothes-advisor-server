@@ -167,10 +167,9 @@ async def update_clothing_item(
     - **Headers**: `Authorization: Bearer <token>`
     - If a new image is uploaded, the old one will be removed.
     """
-    # Отримуємо поточного користувача
+    # Get the user ID via the token
     current_user: User = get_current_user(token, db)
 
-    # Шукаємо елемент одягу
     clothing_item = db.query(ClothingItem).filter(ClothingItem.id == item_id).first()
 
     if not clothing_item:
@@ -179,7 +178,7 @@ async def update_clothing_item(
     if clothing_item.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="You are not allowed to update this item")
 
-    # 🔄 Обробка кольорів
+    # 🔄 Handle colors
     if not red or not green or not blue:
         if file:
             red, green, blue = get_dominant_color(file)
@@ -193,7 +192,7 @@ async def update_clothing_item(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid color values")
 
-    # 🔄 Оновлення інших полів
+    # 🔄 Update other fields
     clothing_item.name = name
     clothing_item.category = category
     clothing_item.season = season
@@ -206,7 +205,7 @@ async def update_clothing_item(
     clothing_item.price = price
     clothing_item.is_favorite = is_favorite
 
-    # 📁 Видалення старого файлу та збереження нового
+    # 📁 Remove old file and save new one
     if file:
         old_filename = clothing_item.filename
         filename = save_file(file)
@@ -271,7 +270,6 @@ def preview_remove_clothing_item_background(
         "data": f"{SERVER_URL}/{output_path}"
     })
 
-
 @clothing_router.put("/clothing-items/{clothing_item_id}/confirm-remove-background")
 def confirm_background_removal(
     clothing_item_id: int,
@@ -300,36 +298,78 @@ def confirm_background_removal(
                 "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None, }
 
 
-@clothing_router.put("/items/{item_id}/favorite", response_model=None)
-def favorite_item(
+@clothing_router.put("/items/{item_id}/toggle-favorite", response_model=None)
+def toggle_favorite_item(
     item_id: int,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
     current_user: User = get_current_user(token, db)
-    updated_item = mark_clothing_item_as_favorite(db, item_id, current_user.id)
+
+    # Find the user's clothing item
+    clothing_item = db.query(ClothingItem).filter(
+        ClothingItem.id == item_id,
+        ClothingItem.owner_id == current_user.id
+    ).first()
+
+    if not clothing_item:
+        raise HTTPException(status_code=404, detail="Clothing item not found for this user with this ID") 
+
+    # Toggle the value of is_favorite
+    clothing_item.is_favorite = not clothing_item.is_favorite
+    db.commit()
+    db.refresh(clothing_item)
+
     update_synchronized_at(token, db)
-    return {"detail": "Item marked as favorite", "data":{
 
-    "item": updated_item.id},
-    "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None, }
+    return {
+        "detail": f"Item {'added to' if clothing_item.is_favorite else 'removed from'} favorites",
+        "data": {
+            "item": clothing_item.id,
+            "is_favorite": clothing_item.is_favorite
+        },
+        "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None
+    }
 
-
-@clothing_router.put("/items/{item_id}/unfavorite", response_model=None)
-def unfavorite_item(
+@clothing_router.delete("/clothing-items/{item_id}", summary="Delete clothing item")
+async def delete_clothing_item(
     item_id: int,
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
 ):
+    """
+    **Deletes a clothing item.**
+
+    - **Headers**: `Authorization: Bearer <token>`
+    - Deletes the file from disk if it exists.
+    """
+    # Get the current user
     current_user: User = get_current_user(token, db)
-    updated_item = mark_clothing_item_as_unfavorite(
-        db, item_id, current_user.id)
+
+    # Find the clothing item
+    clothing_item = db.query(ClothingItem).filter(ClothingItem.id == item_id).first()
+
+    if not clothing_item:
+        raise HTTPException(status_code=404, detail="Clothing item not found")
+
+    if clothing_item.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not allowed to delete this item")
+
+    # Delete associated file if it exists
+    if clothing_item.filename:
+        file_path = os.path.join("uploads", clothing_item.filename)
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                logging.warning(f"Failed to delete file: {e}")
+
+    # Delete the item from the database
+    db.delete(clothing_item)
+    db.commit()
     update_synchronized_at(token, db)
-    return {"detail": "Item marked as unfavorite", "data":{
 
-    "item": updated_item.id},
-    "synchronized_at": current_user.synchronized_at.isoformat() if current_user.synchronized_at else None, }
-
+    return {"detail": f"Clothing item with id {item_id} deleted successfully."}
 
 @clothing_router.get("/clothing-combinations")
 def get_user_combinations(

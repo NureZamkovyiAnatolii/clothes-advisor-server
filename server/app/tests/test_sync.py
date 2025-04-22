@@ -65,7 +65,7 @@ def test_sync_data_with_files(db_session: Session, auth_token):
         "brand": "TestBrand",
         "purchase_date": "2023-01-01",
         "price": 1000.50,
-        "is_favorite": true
+        "is_favorite": True
     },
     {
         "id": 4,  
@@ -80,7 +80,7 @@ def test_sync_data_with_files(db_session: Session, auth_token):
         "brand": "TestBrand",
         "purchase_date": "2023-02-01",
         "price": 1500.75,
-        "is_favorite": false
+        "is_favorite": False
     }
 ]   
     # Старі ID речей
