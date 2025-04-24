@@ -250,6 +250,8 @@ def synchronize_user_data(
 
     current_user = get_current_user(token, db)
     
+    if isinstance(current_user, JSONResponse):
+        return current_user
     # 1. Видалити старі речі та комбінації користувача
     old_combos = db.query(ClothingCombination).filter_by(owner_id = current_user.id).all()
     for combo in old_combos:
