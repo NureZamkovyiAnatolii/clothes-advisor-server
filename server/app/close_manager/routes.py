@@ -1,3 +1,4 @@
+import asyncio
 import os
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
@@ -245,8 +246,8 @@ async def update_clothing_item(
 
 
 
-@clothing_router.put("/clothing-items/{clothing_item_id}/preview-remove-background")
-def preview_remove_clothing_item_background(
+@clothing_router.get("/clothing-items/{clothing_item_id}/preview-remove-background")
+async def preview_remove_clothing_item_background(
     clothing_item_id: int,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme)
@@ -263,39 +264,13 @@ def preview_remove_clothing_item_background(
 
     new_filename, output_path = remove_background_preview(
         clothing_item.filename)
-
-    return JSONResponse({
-
+    
+    response = {
         "detail": "Background removed successfully.",
         "data": f"{SERVER_URL}/{output_path}"
-    })
+    }
 
-@clothing_router.put("/clothing-items/{clothing_item_id}/confirm-remove-background")
-def confirm_background_removal(
-    clothing_item_id: int,
-    is_preview: bool = Form(
-        description="Boolean parameter. Set to true if confirming the removal of the background preview, false to confirm the current file."),
-    db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
-):
-    current_user: User = get_current_user(token, db)
-
-    clothing_item = db.query(ClothingItem).filter(
-        ClothingItem.id == clothing_item_id,
-        ClothingItem.owner_id == current_user.id
-    ).first()
-
-    if not clothing_item:
-        raise HTTPException(status_code=404, detail="Clothing item not found")
-
-    # Викликаємо функцію для видалення файлу за ID
-    result = remove_file_by_clothing_item_id(clothing_item_id, is_preview, db)
-    update_synchronized_at(token, db)
-    return {
-        "detail": result["detail"],
-            "data": {
-                "new_filename": clothing_item.filename},
-        "synchronized_at": current_user.synchronized_at_iso}
+    return FileResponse(output_path, media_type="image/jpeg", headers={"Content-Disposition": f"attachment; filename={new_filename}"})
 
 
 @clothing_router.put("/items/{item_id}/toggle-favorite", response_model=None)
