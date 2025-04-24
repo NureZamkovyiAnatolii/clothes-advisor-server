@@ -192,9 +192,9 @@ async def update_clothing_item(
     clothing_item.green = green
     clothing_item.blue = blue
     clothing_item.material = material or clothing_item.material
-    clothing_item.brand = brand or clothing_item.brand
-    clothing_item.purchase_date = datetime.strptime(purchase_date, "%Y-%m-%d").date() if purchase_date else clothing_item.purchase_date
-    clothing_item.price = price if price is not None else clothing_item.price
+    clothing_item.brand = brand if brand is not None else None
+    clothing_item.purchase_date = datetime.strptime(purchase_date, "%Y-%m-%d").date() if purchase_date else None
+    clothing_item.price = price if price is not None else None
     clothing_item.is_favorite = is_favorite if is_favorite is not None else clothing_item.is_favorite
 
     # 📁 Remove old file and save new one
