@@ -151,14 +151,14 @@ async def update_clothing_item(
     name: str = Form(...),
     category: str = Form(...),
     season: str = Form(...),
-    red: Optional[str] = Form(),
-    green: Optional[str] = Form(),
-    blue: Optional[str] = Form(),
+    red: Optional[str] = Form(None),
+    green: Optional[str] = Form(None),
+    blue: Optional[str] = Form(None),
     material: str = Form(...),
-    brand: str = Form(),
-    purchase_date: str = Form(),
-    price: float = Form(),
-    is_favorite: bool = Form(False),
+    brand: str = Form(None),
+    purchase_date: str = Form(None),
+    price: float = Form(None),
+    is_favorite: bool = Form(None),
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
@@ -179,32 +179,23 @@ async def update_clothing_item(
     if clothing_item.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="You are not allowed to update this item")
 
-    # 🔄 Handle colors
-    if not red or not green or not blue:
-        if file:
-            red, green, blue = get_dominant_color(file)
-        else:
-            red, green, blue = clothing_item.red, clothing_item.green, clothing_item.blue
-    else:
-        try:
-            red = int(red)
-            green = int(green)
-            blue = int(blue)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid color values")
+    # 🔄 Handle colors (if not provided, use existing ones from the DB)
+    red = int(red) if red else clothing_item.red
+    green = int(green) if green else clothing_item.green
+    blue = int(blue) if blue else clothing_item.blue
 
-    # 🔄 Update other fields
-    clothing_item.name = name
-    clothing_item.category = category
-    clothing_item.season = season
+    # 🔄 Update other fields (if not provided, use existing ones from the DB)
+    clothing_item.name = name or clothing_item.name
+    clothing_item.category = category or clothing_item.category
+    clothing_item.season = season or clothing_item.season
     clothing_item.red = red
     clothing_item.green = green
     clothing_item.blue = blue
-    clothing_item.material = material
-    clothing_item.brand = brand
-    clothing_item.purchase_date = datetime.strptime(purchase_date, "%Y-%m-%d").date() if purchase_date else None
-    clothing_item.price = price
-    clothing_item.is_favorite = is_favorite
+    clothing_item.material = material or clothing_item.material
+    clothing_item.brand = brand or clothing_item.brand
+    clothing_item.purchase_date = datetime.strptime(purchase_date, "%Y-%m-%d").date() if purchase_date else clothing_item.purchase_date
+    clothing_item.price = price if price is not None else clothing_item.price
+    clothing_item.is_favorite = is_favorite if is_favorite is not None else clothing_item.is_favorite
 
     # 📁 Remove old file and save new one
     if file:
@@ -239,10 +230,11 @@ async def update_clothing_item(
             "brand": clothing_item.brand,
             "purchase_date": clothing_item.purchase_date.isoformat() if clothing_item.purchase_date else None,
             "price": clothing_item.price,
-            "is_favorite": clothing_item.is_favorite, 
+            "is_favorite": clothing_item.is_favorite,
         },
         "synchronized_at": current_user.synchronized_at_iso
     }
+
 
 
 
