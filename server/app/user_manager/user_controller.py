@@ -265,40 +265,31 @@ def synchronize_user_data(
     db.commit()
     print(f"🧹 Cleared old items and combinations for user {current_user.email}")
 
-    # 2. Додати нові речі
-    saved_filenames = {}
-
-    for file in files:
-        original_name = file.filename
-        from app.close_manager import save_file
-        # Якщо save_file приймає UploadFile — просто передай його
-        saved_name = save_file(file)
-
-        saved_filenames[original_name] = saved_name
-        logging.debug(f"File '{original_name}' saved as '{saved_filenames[original_name]}'")
-
-    old_to_new_items_map = {}  # Мапа старих ID до нових
-
+    old_to_new_items_map = {}
     new_items = []
-    for item in items_data:
-        # Видаляємо 'id' та 'owner_id' зі словника
+    # 2. Додаємо нові речі разом із файлами
+    for file, item in zip(files, items_data):
+        print("Original item:", item)
+        from app.close_manager import save_file
+        # Зберігаємо файл і отримуємо нову назву
+        saved_name = save_file(file)
+        logging.debug(f"File '{file.filename}' saved as '{saved_name}'")
+
+        # Видаляємо id та owner_id з item
         item_data_cleaned = {
             k: v for k, v in item.items()
             if k not in ("id", "owner_id")
         }
 
-        # Оновлюємо назву файлу, якщо є така у мапі
-        original_filename = item.get("filename")
-        if original_filename in saved_filenames:
-            item_data_cleaned["filename"] = saved_filenames[original_filename]  # ✅ тепер працює правильно
+        # Оновлюємо filename на збережене ім’я
+        item_data_cleaned["filename"] = saved_name
 
-        # Створюємо новий об’єкт з прив’язкою до користувача
+        # Створюємо об’єкт і додаємо до БД
         new_item = ClothingItem(**item_data_cleaned, owner_id=current_user.id)
-
         db.add(new_item)
-        db.commit()  # Зберігаємо об'єкт в базі даних, щоб отримати його новий ID
+        db.commit()
 
-        # Мапуємо старий ID на новий
+        # Мапа старого ID до нового
         old_to_new_items_map[item["id"]] = new_item.id
         new_items.append(new_item)
 
@@ -329,17 +320,6 @@ def synchronize_user_data(
 
     current_user.synchronized_at = datetime.now(timezone.utc)
     db.commit()
-# Формуємо фінальний список з URL
-    item_mapping_list = [
-    {
-        "old": old_id,
-        "new": new_id,
-        "new_file": f"{saved_filename}"
-    }
-    for (old_id, new_id), saved_filename in zip(old_to_new_items_map.items(), saved_filenames)
-]
-
-    combo_id_mapping_list = [{"old": old_id, "new": new_id} for old_id, new_id in old_to_new_combos_map.items()]
 
     return JSONResponse(
         status_code=200,
