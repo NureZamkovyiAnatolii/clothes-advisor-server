@@ -1,3 +1,4 @@
+from io import BytesIO
 import logging
 import os
 import uuid
@@ -49,29 +50,21 @@ def save_file(file: UploadFile):
     return unique_filename
 
 
-def remove_background_preview(filename: str) -> tuple[str, str]:
-
-    # Define the input path for the file to be processed
-
+def remove_background_preview(filename: str) -> tuple[str, BytesIO]:
     input_path = os.path.join(UPLOAD_DIR, filename)
 
-    # Get the base name of the file without the extension
-    # Generate the output filename with the "_bg_removed" suffix
-    base_name = os.path.splitext(filename)[0]
-    output_filename = f"{base_name}_bg_removed.png"
-    output_path = os.path.join(UPLOAD_DIR, output_filename)
-
-    # Open the input file in read-binary mode
-    # Read the content of the input file
-    # Process the input data to remove the background
+    
     with open(input_path, 'rb') as input_file:
         input_data = input_file.read()
         output_data = remove(input_data)
 
-    with open(output_path, 'wb') as out_file:
-        out_file.write(output_data)
+    output_io = BytesIO(output_data)
 
-    return output_filename, output_path
+
+    base_name = os.path.splitext(filename)[0]
+    output_filename = f"{base_name}_bg_removed.png"
+
+    return output_filename, output_io
 
 
 def add_clothing_item_to_db(

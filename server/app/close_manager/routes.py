@@ -2,7 +2,7 @@ import asyncio
 import os
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
 from PIL import Image
@@ -254,16 +254,17 @@ async def preview_remove_clothing_item_background(
     if not clothing_item:
         raise HTTPException(status_code=404, detail="Clothing item not found")
 
-    new_filename, output_path = remove_background_preview(
-        clothing_item.filename)
-    
-    response = {
-        "detail": "Background removed successfully.",
-        "data": f"{SERVER_URL}/{output_path}"
-    }
+    new_filename, output_io = remove_background_preview(clothing_item.filename)
 
-    return FileResponse(output_path, media_type="image/jpeg", headers={"Content-Disposition": f"attachment; filename={new_filename}"})
+    # Важливо "перемотати" віртуальний файл на початок
+    output_io.seek(0)
 
+    # Повертаємо файл напряму з пам'яті
+    return StreamingResponse(
+        output_io,
+        media_type="image/png",  # бо у тебе output.png
+        headers={"Content-Disposition": f"attachment; filename={new_filename}"}
+    )
 
 @clothing_router.put("/items/{item_id}/toggle-favorite", response_model=None)
 def toggle_favorite_item(
