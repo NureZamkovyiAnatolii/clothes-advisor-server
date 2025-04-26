@@ -368,6 +368,8 @@ def create_clothing_combination(
         item_ids=item_ids,
         owner_id=user_id
     )
+    if combination is HTTPException:
+        raise combination
     update_synchronized_at(token, db)
     return {
         "detail": "Clothing combination created successfully.",

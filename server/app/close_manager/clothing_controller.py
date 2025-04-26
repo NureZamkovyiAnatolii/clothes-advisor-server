@@ -53,7 +53,7 @@ def save_file(file: UploadFile):
 def remove_background_preview(filename: str) -> tuple[str, BytesIO]:
     input_path = os.path.join(UPLOAD_DIR, filename)
 
-    
+
     with open(input_path, 'rb') as input_file:
         input_data = input_file.read()
         output_data = remove(input_data)
@@ -309,7 +309,15 @@ def create_combination_in_db(
         owner_id=owner_id,
         items=items
     )
-
+    # 🛡️ Check that each CategoryEnum appears only once
+    category_counts = {}
+    for item in items:
+        if item.category in category_counts:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Only one item per category is allowed. Duplicate found for category: {item.category}."
+            )
+        category_counts[item.category] = 1
     db.add(combination)
     db.commit()
     db.refresh(combination)
