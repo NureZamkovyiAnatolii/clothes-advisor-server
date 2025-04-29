@@ -37,7 +37,7 @@ try:
 
     @app.get("/", tags=["Ping"])
     def read_root():
-        return {"message": "FastAPI"}
+        return {"detail": "FastAPI"}
 
 except Exception as e:
     print(f"❌ Database connection error: {e}")

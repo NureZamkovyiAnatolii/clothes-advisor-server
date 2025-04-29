@@ -74,7 +74,8 @@ class ClothingItem(Base):
     combinations = relationship( 
         "ClothingCombination",
         secondary="clothing_combination_items",
-        back_populates="items"
+        back_populates="items",
+        cascade="all, delete"
     )
 
     def __init__(self, **kwargs):

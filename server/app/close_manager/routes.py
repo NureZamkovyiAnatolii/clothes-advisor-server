@@ -3,6 +3,7 @@ import os
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
 from PIL import Image
@@ -350,11 +351,13 @@ def get_user_combinations(
         "data": data
     }
 
-
+class CreateCombinationRequest(BaseModel):
+    name: str
+    item_ids: List[int]
+    
 @clothing_router.post("/clothing-combinations")
 def create_clothing_combination(
-    name: str = Form(...),
-    item_ids: List[int] = Form(...),
+    request: CreateCombinationRequest,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
 ):
@@ -364,8 +367,8 @@ def create_clothing_combination(
 
     combination = create_combination_in_db(
         db=db,
-        name=name,
-        item_ids=item_ids,
+        name=request.name,
+        item_ids=request.item_ids,
         owner_id=user_id
     )
     if combination is HTTPException:
@@ -376,3 +379,33 @@ def create_clothing_combination(
         "combination_id": combination.id,
         "synchronized_at": get_current_user(token,db).synchronized_at_iso
     }
+
+
+@clothing_router.delete("/clothing-combinations/{combination_id}")
+def delete_clothing_combination(
+    combination_id: int,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    current_user = get_current_user(token, db)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    combination = db.query(ClothingCombination).filter(
+        ClothingCombination.id == combination_id,
+        ClothingCombination.owner_id == current_user.id
+    ).first()
+
+    if not combination:
+        raise HTTPException(status_code=404, detail="Combination not found")
+
+    db.delete(combination)
+    db.commit()
+
+    update_synchronized_at(token, db)
+
+    return {
+        "detail": "Clothing combination deleted successfully.",
+        "synchronized_at": current_user.synchronized_at_iso
+    }
+

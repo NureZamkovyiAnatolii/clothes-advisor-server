@@ -21,5 +21,6 @@ class ClothingCombination(Base):
     items = relationship(
         "ClothingItem",
         secondary="clothing_combination_items",
-        back_populates="combinations"
+        back_populates="combinations",
+        cascade="all, delete"
     )
