@@ -359,14 +359,59 @@ def get_user_combinations(
     }
 
 
-class CreateCombinationRequest(BaseModel):
+class CombinationRequest(BaseModel):
     name: str
     item_ids: List[int]
 
+@clothing_router.put("/clothing-combinations/{combination_id}")
+def update_clothing_combination(
+    combination_id: int,
+    request: CombinationRequest,
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme),
+):
+    current_user = get_current_user(token, db)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    combination = db.query(ClothingCombination).filter(
+        ClothingCombination.id == combination_id,
+        ClothingCombination.owner_id == current_user.id
+    ).first()
+
+    if not combination:
+        raise HTTPException(status_code=404, detail="Combination not found")
+
+    if request.name:
+        combination.name = request.name
+    if request.item_ids is not None:
+        items = db.query(ClothingItem).filter(ClothingItem.id.in_(request.item_ids)).all()
+        found_ids = {item.id for item in items}
+        requested_ids = set(request.item_ids)
+        missing_ids = requested_ids - found_ids
+
+        if missing_ids:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Some clothing items not found: {sorted(missing_ids)}"
+            )
+
+        combination.items = items
+
+    db.commit()
+    db.refresh(combination)
+
+    update_synchronized_at(token, db)
+
+    return {
+        "detail": "Clothing combination updated successfully.",
+        "data": {"combination_id": combination.id},
+        "synchronized_at": current_user.synchronized_at_iso
+    }
 
 @clothing_router.post("/clothing-combinations")
 def create_clothing_combination(
-    request: CreateCombinationRequest,
+    request: CombinationRequest,
     db: Session = Depends(get_db),
     token: str = Depends(oauth2_scheme),
 ):
