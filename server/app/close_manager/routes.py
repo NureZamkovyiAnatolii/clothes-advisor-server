@@ -127,7 +127,7 @@ async def add_clothing_item(
         "detail": "Clothing item added successfully.",
         "data": {
             "id": new_clothing_item.id,
-           "filename": f"{SERVER_URL}/uploads/{new_clothing_item.filename}",
+            "filename": f"{SERVER_URL}/uploads/{new_clothing_item.filename}",
             "name": new_clothing_item.name,
             "category": new_clothing_item.category,
             "season": new_clothing_item.season,
@@ -172,13 +172,15 @@ async def update_clothing_item(
     # Get the user ID via the token
     current_user: User = get_current_user(token, db)
 
-    clothing_item = db.query(ClothingItem).filter(ClothingItem.id == item_id).first()
+    clothing_item = db.query(ClothingItem).filter(
+        ClothingItem.id == item_id).first()
 
     if not clothing_item:
         raise HTTPException(status_code=404, detail="Clothing item not found")
 
     if clothing_item.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You are not allowed to update this item")
+        raise HTTPException(
+            status_code=403, detail="You are not allowed to update this item")
 
     # 🔄 Handle colors (if not provided, use existing ones from the DB)
     red = int(red) if red else clothing_item.red
@@ -194,7 +196,8 @@ async def update_clothing_item(
     clothing_item.blue = blue
     clothing_item.material = material or clothing_item.material
     clothing_item.brand = brand if brand is not None else None
-    clothing_item.purchase_date = datetime.strptime(purchase_date, "%Y-%m-%d").date() if purchase_date else None
+    clothing_item.purchase_date = datetime.strptime(
+        purchase_date, "%Y-%m-%d").date() if purchase_date else None
     clothing_item.price = price if price is not None else None
     clothing_item.is_favorite = is_favorite if is_favorite is not None else clothing_item.is_favorite
 
@@ -237,8 +240,6 @@ async def update_clothing_item(
     }
 
 
-
-
 @clothing_router.get("/clothing-items/{clothing_item_id}/preview-remove-background")
 async def preview_remove_clothing_item_background(
     clothing_item_id: int,
@@ -267,6 +268,7 @@ async def preview_remove_clothing_item_background(
         headers={"Content-Disposition": f"attachment; filename={new_filename}"}
     )
 
+
 @clothing_router.put("/items/{item_id}/toggle-favorite", response_model=None)
 def toggle_favorite_item(
     item_id: int,
@@ -282,7 +284,8 @@ def toggle_favorite_item(
     ).first()
 
     if not clothing_item:
-        raise HTTPException(status_code=404, detail="Clothing item not found for this user with this ID") 
+        raise HTTPException(
+            status_code=404, detail="Clothing item not found for this user with this ID")
 
     # Toggle the value of is_favorite
     clothing_item.is_favorite = not clothing_item.is_favorite
@@ -298,6 +301,7 @@ def toggle_favorite_item(
         },
         "synchronized_at": current_user.synchronized_at_iso
     }
+
 
 @clothing_router.delete("/clothing-items/{item_id}", summary="Delete clothing item")
 async def delete_clothing_item(
@@ -315,13 +319,15 @@ async def delete_clothing_item(
     current_user: User = get_current_user(token, db)
 
     # Find the clothing item
-    clothing_item = db.query(ClothingItem).filter(ClothingItem.id == item_id).first()
+    clothing_item = db.query(ClothingItem).filter(
+        ClothingItem.id == item_id).first()
 
     if not clothing_item:
         raise HTTPException(status_code=404, detail="Clothing item not found")
 
     if clothing_item.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="You are not allowed to delete this item")
+        raise HTTPException(
+            status_code=403, detail="You are not allowed to delete this item")
 
     # Delete associated file if it exists
     if clothing_item.filename:
@@ -338,7 +344,8 @@ async def delete_clothing_item(
     update_synchronized_at(token, db)
 
     return {"detail": f"Clothing item with id {item_id} deleted successfully.",
-        "synchronized_at": current_user.synchronized_at_iso}
+            "synchronized_at": current_user.synchronized_at_iso}
+
 
 @clothing_router.get("/clothing-combinations")
 def get_user_combinations(
@@ -351,10 +358,12 @@ def get_user_combinations(
         "data": data
     }
 
+
 class CreateCombinationRequest(BaseModel):
     name: str
     item_ids: List[int]
-    
+
+
 @clothing_router.post("/clothing-combinations")
 def create_clothing_combination(
     request: CreateCombinationRequest,
@@ -376,8 +385,8 @@ def create_clothing_combination(
     update_synchronized_at(token, db)
     return {
         "detail": "Clothing combination created successfully.",
-        "combination_id": combination.id,
-        "synchronized_at": get_current_user(token,db).synchronized_at_iso
+        "data": {"combination_id": combination.id},
+        "synchronized_at": get_current_user(token, db).synchronized_at_iso
     }
 
 
@@ -408,4 +417,3 @@ def delete_clothing_combination(
         "detail": "Clothing combination deleted successfully.",
         "synchronized_at": current_user.synchronized_at_iso
     }
-
