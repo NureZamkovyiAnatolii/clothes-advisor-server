@@ -132,7 +132,7 @@ def authenticate_user(db: Session, email: str, password: str):
         
         if(not user):
             logging.debug(f"No user found with email: {email}")
-        if not verify_password(password, user.password): 
+        elif not verify_password(password, user.password): 
             logging.debug(f"Authentication failed for user: {email}") 
         return JSONResponse(
             status_code=404,
