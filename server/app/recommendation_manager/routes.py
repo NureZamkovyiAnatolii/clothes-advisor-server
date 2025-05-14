@@ -88,3 +88,95 @@ async def get_recommendations(
         return check_user_clothing_for_weather_and_palette(
             token, db, location, target_time, red, green, blue, palette_type="monochromatic"
         )
+
+from abc import ABC, abstractmethod
+from typing import Dict, Any, List
+
+
+# 🔸 Strategy interface
+class RecommendationStrategy(ABC):
+    @abstractmethod
+    def get_recommendation(self, user_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        pass
+
+
+# 🔹 Basic strategies (one input factor each)
+
+class ColorPreferenceStrategy(RecommendationStrategy):
+    def get_recommendation(self, user_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        # Filter clothes based on the user's preferred color
+        pass
+
+class LocationWeatherStrategy(RecommendationStrategy):
+    def get_recommendation(self, user_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        # Select clothes based on current weather in the user's location
+        pass
+
+class EventTypeStrategy(RecommendationStrategy):
+    def get_recommendation(self, user_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        # Recommend based on the event type (formal, casual, sport)
+        pass
+
+class DateSeasonStrategy(RecommendationStrategy):
+    def get_recommendation(self, user_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        # Recommend based on season derived from the date
+        pass
+
+
+# 🔹 Composite strategies (combined input factors)
+
+class ColorAndLocationStrategy(RecommendationStrategy):
+    def get_recommendation(self, user_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        # Combine color preference and weather/location data
+        pass
+
+class EventAndSeasonStrategy(RecommendationStrategy):
+    def get_recommendation(self, user_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        # Combine event type and seasonal appropriateness
+        pass
+
+class FullContextStrategy(RecommendationStrategy):
+    def get_recommendation(self, user_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        # Use all parameters: color, location, date, event type
+        pass
+
+
+# 🔹 Strategy context class
+
+class RecommendationContext:
+    def __init__(self, strategy: RecommendationStrategy):
+        self.strategy = strategy
+
+    def set_strategy(self, strategy: RecommendationStrategy):
+        self.strategy = strategy
+
+    def recommend(self, user_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        return self.strategy.get_recommendation(user_data)
+
+
+# 🔹 Example of strategy selection logic (simplified)
+
+def choose_strategy(user_data: Dict[str, Any]) -> RecommendationStrategy:
+    if all(k in user_data for k in ["color", "location", "date", "event"]):
+        return FullContextStrategy()
+    elif "color" in user_data and "location" in user_data:
+        return ColorAndLocationStrategy()
+    elif "event" in user_data and "date" in user_data:
+        return EventAndSeasonStrategy()
+    elif "color" in user_data:
+        return ColorPreferenceStrategy()
+    elif "location" in user_data:
+        return LocationWeatherStrategy()
+    elif "event" in user_data:
+        return EventTypeStrategy()
+    elif "date" in user_data:
+        return DateSeasonStrategy()
+    else:
+        raise ValueError("Insufficient data for recommendation")
+
+# 🔹 Usage example
+
+# user_data = {"color": "red", "location": "Kyiv", "date": "2025-05-10", "event": "work"}
+# strategy = choose_strategy(user_data)
+# context = RecommendationContext(strategy)
+# recommendations = context.recommend(user_data)

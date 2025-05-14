@@ -95,7 +95,7 @@ async def create_user(db: Session, email: str, password: str, locale: str):
         return JSONResponse(
             status_code=201,
             content={
-                "detail": "Resister successful. Please verify your email",
+                "detail": "Register successful. Please verify your email",
                 "data": {
                     "access_token": token,
                     "token_type": "bearer"
@@ -128,26 +128,20 @@ def authenticate_user(db: Session, email: str, password: str):
     logging.debug(f"Retrieved user: {user}")
 
     # Check if user exists in DB
-    if not user:
-        logging.debug(f"No user found with email: {email}")
+    if not user or not verify_password(password, user.password):
+        
+        if(not user):
+            logging.debug(f"No user found with email: {email}")
+        if not verify_password(password, user.password): 
+            logging.debug(f"Authentication failed for user: {email}") 
         return JSONResponse(
             status_code=404,
             content={
-                "detail": "User not found",
+                "detail": "User not found or incorrect password",
                 "data": None
             }
         )
     
-    # Check password
-    if not verify_password(password, user.password):
-        logging.debug(f"Authentication failed for user: {email}")
-        return JSONResponse(
-            status_code=401,
-            content={
-                "detail": "Incorrect password",
-                "data": None
-            }
-        )
     if user.is_email_verified == False:
         return JSONResponse(
             status_code=403,
@@ -252,10 +246,10 @@ def synchronize_user_data(
     
     if isinstance(current_user, JSONResponse):
         return current_user
-    # 1. Видалити старі речі та комбінації користувача
+    # 1. Cleans up the clothing item data before adding it to the database and associates them with the current user.
     old_combos = db.query(ClothingCombination).filter_by(owner_id = current_user.id).all()
     for combo in old_combos:
-        combo.items.clear()  # очищає many-to-many зв'язки
+        combo.items.clear()  
         db.delete(combo)
 
     old_items = db.query(ClothingItem).filter_by(owner_id=current_user.id).all()
@@ -267,36 +261,33 @@ def synchronize_user_data(
 
     old_to_new_items_map = {}
     new_items = []
-    # 2. Додаємо нові речі разом із файлами
+    # 2. Add new clothing items to the database and associate them with the current user.
     for file, item in zip(files, items_data):
         print("Original item:", item)
         from app.close_manager import save_file
-        # Зберігаємо файл і отримуємо нову назву
+
         saved_name = save_file(file)
         logging.debug(f"File '{file.filename}' saved as '{saved_name}'")
 
-        # Видаляємо id та owner_id з item
+
         item_data_cleaned = {
             k: v for k, v in item.items()
             if k not in ("id", "owner_id")
         }
 
-        # Оновлюємо filename на збережене ім’я
         item_data_cleaned["filename"] = saved_name
 
-        # Створюємо об’єкт і додаємо до БД
         new_item = ClothingItem(**item_data_cleaned, owner_id=current_user.id)
         db.add(new_item)
         db.commit()
 
-        # Мапа старого ID до нового
         old_to_new_items_map[item["id"]] = new_item.id
         new_items.append(new_item)
 
     db.commit()
 
-    # 3. Додати нові комбінації
-    old_to_new_combos_map = {}  # мапа старих ID комбінацій до нових
+    # 3. Creates new clothing combinations and maps the old IDs to the new ones.
+    old_to_new_combos_map = {}  
 
     for combo in combos_data:
         old_combo_id = combo["id"]
@@ -304,9 +295,8 @@ def synchronize_user_data(
         new_combo = ClothingCombination(
             name=combo["name"], owner_id=current_user.id)
         db.add(new_combo)
-        db.commit()  # щоб combo.id був доступний
-
-        # Мапуємо старий ID на новий
+        db.commit()  
+        
         old_to_new_combos_map[old_combo_id] = new_combo.id
 
         for old_item_id in combo["item_ids"]:
@@ -361,10 +351,10 @@ def get_user_data(token: str, db: Session):
 
     logging.debug(f"Items: {items}, Combinations: {combos}")
 
-    # Отримуємо дані з ключа 'data'
+    
     items_data = [
         item.to_dict() if hasattr(item, 'to_dict') else item
-        for item in items['data'].values()  # Звертаємося до 'data', і використовуємо values()
+        for item in items['data'].values()  
         ]
     
     current_user = get_current_user(token, db)
@@ -377,6 +367,7 @@ def get_user_data(token: str, db: Session):
         },
             "synchronized_at": current_user.synchronized_at_iso
     })
+
 def is_user_verified(user_id, db: Session) -> bool:
     user = db.query(User).filter(User.id == user_id).first()
     return user is not None and user.is_email_verified
