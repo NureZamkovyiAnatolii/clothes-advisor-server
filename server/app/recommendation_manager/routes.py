@@ -36,7 +36,6 @@ async def get_recommendations(
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    # Парсимо кольори у int, якщо можливо, інакше None
     def parse_color_component(value: Optional[str]) -> Optional[int]:
         try:
             return int(value) if value is not None and value != "" else None
@@ -73,42 +72,38 @@ async def get_recommendations(
             event_score = event_strategy.evaluate(item, event)
             item_results["event_match"] = event_score
 
-        # Комбіновані стратегії
-        if r is not None and g is not None and b is not None and palette_type and event:
-            color_event_strategy = ColorEventStrategy()
-            item_results["color_event_match"] = color_event_strategy.evaluate(item, other_color, palette_type, event)
+        # Якщо **хоч один параметр не заповнений** — додаємо комбіновані стратегії
+        if not (
+            location and target_time and
+            r is not None and g is not None and b is not None and
+            palette_type and event
+        ):
+            if r is not None and g is not None and b is not None and palette_type and event:
+                color_event_strategy = ColorEventStrategy()
+                item_results["color_event_match"] = color_event_strategy.evaluate(item, other_color, palette_type, event)
 
-        if location and target_time and event:
-            weather_event_strategy = WeatherEventStrategy()
-            item_results["weather_event_match"] = weather_event_strategy.evaluate(item, location, target_time, event)
+            if location and target_time and event:
+                weather_event_strategy = WeatherEventStrategy()
+                item_results["weather_event_match"] = weather_event_strategy.evaluate(item, location, target_time, event)
 
-        if location and target_time and r is not None and g is not None and b is not None and palette_type:
-            color_weather_strategy = ColorWeatherStrategy()
-            item_results["color_weather_match"] = color_weather_strategy.evaluate(item, other_color, palette_type, location, target_time)
+            if location and target_time and r is not None and g is not None and b is not None and palette_type:
+                color_weather_strategy = ColorWeatherStrategy()
+                item_results["color_weather_match"] = color_weather_strategy.evaluate(item, other_color, palette_type, location, target_time)
 
-        # Усереднена стратегія
-        combined_strategies = []
-        if location and target_time:
-            combined_strategies.append(weather_strategy)
-        if r is not None and g is not None and b is not None and palette_type:
-            combined_strategies.append(color_strategy)
-        if event:
-            combined_strategies.append(event_strategy)
-
+        # Якщо всі параметри заповнені — додаємо лише average_match
         if (
             location and target_time and
             r is not None and g is not None and b is not None and
             palette_type and event
         ):
-            # Усереднена стратегія з усіма параметрами
             average_strategy = AverageRecommendationStrategy()
             avg_score = average_strategy.evaluate(
                 item,
-                location if location else "",
-                target_time if target_time else "",
-                (r, g, b) if r is not None and g is not None and b is not None else (0, 0, 0),
-                palette_type if palette_type else "",
-                event if event else "",
+                location,
+                target_time,
+                (r, g, b),
+                palette_type,
+                event,
             )
             item_results["average_match"] = avg_score
 
@@ -119,5 +114,6 @@ async def get_recommendations(
         }
 
     return {"detail": "Recommendations computed successfully.", "data": results}
+
 
 
