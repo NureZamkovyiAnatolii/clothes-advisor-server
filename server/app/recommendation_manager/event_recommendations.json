@@ -1,0 +1,380 @@
+{
+  "tshirt": {
+    "event": {
+      "casual_walk": 1.0,
+      "picnic": 0.9,
+      "date": 0.8,
+      "work_meeting": 0.3,
+      "hiking": 0.7,
+      "beach_party": 1.0,
+      "gym": 0.95,
+      "formal_event": 0.2,
+      "home_relax": 1.0
+    }
+  },
+  "pants": {
+    "event": {
+      "sport_training": 0.8,
+      "casual_walk": 1.0,
+      "picnic": 1.0,
+      "date": 0.9,
+      "work_meeting": 0.9,
+      "hiking": 1.0,
+      "beach_party": 0.4,
+      "gym": 0.7,
+      "formal_event": 0.8,
+      "home_relax": 1.0
+    }
+  },
+  "jacket": {
+    "event": {
+      "casual_walk": 0.9,
+      "picnic": 0.8,
+      "date": 0.7,
+      "work_meeting": 0.85,
+      "hiking": 0.9,
+      "beach_party": 0.3,
+      "gym": 0.3,
+      "formal_event": 0.7,
+      "home_relax": 0.8
+    }
+  },
+  "dress": {
+    "event": {
+      "casual_walk": 0.8,
+      "picnic": 0.7,
+      "date": 1.0,
+      "work_meeting": 0.5,
+      "hiking": 0.2,
+      "beach_party": 0.9,
+      "gym": 0.1,
+      "formal_event": 1.0,
+      "home_relax": 0.4
+    }
+  },
+  "skirt": {
+    "event": {
+      "casual_walk": 0.8,
+      "picnic": 0.7,
+      "date": 0.9,
+      "work_meeting": 0.6,
+      "hiking": 0.3,
+      "beach_party": 0.9,
+      "gym": 0.1,
+      "formal_event": 0.9,
+      "home_relax": 0.5
+    }
+  },
+  "shorts": {
+    "event": {
+      "casual_walk": 0.9,
+      "picnic": 0.9,
+      "date": 0.6,
+      "work_meeting": 0.2,
+      "hiking": 0.9,
+      "beach_party": 1.0,
+      "gym": 0.9,
+      "formal_event": 0.1,
+      "home_relax": 0.9
+    }
+  },
+  "hoodie": {
+    "event": {
+      "casual_walk": 1.0,
+      "picnic": 0.9,
+      "date": 0.5,
+      "work_meeting": 0.2,
+      "hiking": 0.9,
+      "beach_party": 0.3,
+      "gym": 0.8,
+      "formal_event": 0.1,
+      "home_relax": 1.0
+    }
+  },
+  "sweater": {
+    "event": {
+      "casual_walk": 0.9,
+      "picnic": 0.8,
+      "date": 0.6,
+      "work_meeting": 0.7,
+      "hiking": 0.8,
+      "beach_party": 0.2,
+      "gym": 0.4,
+      "formal_event": 0.5,
+      "home_relax": 0.9
+    }
+  },
+  "coat": {
+    "event": {
+      "casual_walk": 0.9,
+      "picnic": 0.7,
+      "date": 0.7,
+      "work_meeting": 0.9,
+      "hiking": 0.9,
+      "beach_party": 0.1,
+      "gym": 0.1,
+      "formal_event": 0.8,
+      "home_relax": 0.8
+    }
+  },
+  "blouse": {
+    "event": {
+      "casual_walk": 0.7,
+      "picnic": 0.6,
+      "date": 0.8,
+      "work_meeting": 0.9,
+      "hiking": 0.3,
+      "beach_party": 0.4,
+      "gym": 0.1,
+      "formal_event": 0.9,
+      "home_relax": 0.5
+    }
+  },
+  "shoes": {
+    "event": {
+      "casual_walk": 1.0,
+      "picnic": 0.9,
+      "date": 0.8,
+      "work_meeting": 0.8,
+      "hiking": 0.9,
+      "beach_party": 0.5,
+      "gym": 0.7,
+      "formal_event": 0.7,
+      "home_relax": 0.8
+    }
+  },
+  "accessories": {
+    "event": {
+      "casual_walk": 0.8,
+      "picnic": 0.7,
+      "date": 0.9,
+      "work_meeting": 0.6,
+      "hiking": 0.4,
+      "beach_party": 0.7,
+      "gym": 0.3,
+      "formal_event": 0.8,
+      "home_relax": 0.6
+    }
+  },
+  "boots": {
+    "event": {
+      "casual_walk": 0.9,
+      "picnic": 0.7,
+      "date": 0.7,
+      "work_meeting": 0.8,
+      "hiking": 1.0,
+      "beach_party": 0.1,
+      "gym": 0.1,
+      "formal_event": 0.6,
+      "home_relax": 0.7
+    }
+  },
+  "sneakers": {
+    "event": {
+      "casual_walk": 1.0,
+      "picnic": 1.0,
+      "date": 0.6,
+      "work_meeting": 0.4,
+      "hiking": 1.0,
+      "beach_party": 0.6,
+      "gym": 1.0,
+      "formal_event": 0.1,
+      "home_relax": 1.0
+    }
+  },
+  "sandals": {
+    "event": {
+      "casual_walk": 0.9,
+      "picnic": 0.8,
+      "date": 0.7,
+      "work_meeting": 0.2,
+      "hiking": 0.4,
+      "beach_party": 1.0,
+      "gym": 0.3,
+      "formal_event": 0.1,
+      "home_relax": 0.9
+    }
+  },
+  "hat": {
+    "event": {
+      "casual_walk": 0.7,
+      "picnic": 0.7,
+      "date": 0.5,
+      "work_meeting": 0.2,
+      "hiking": 0.8,
+      "beach_party": 0.9,
+      "gym": 0.2,
+      "formal_event": 0.3,
+      "home_relax": 0.6
+    }
+  },
+  "scarf": {
+    "event": {
+      "casual_walk": 0.7,
+      "picnic": 0.6,
+      "date": 0.4,
+      "work_meeting": 0.3,
+      "hiking": 0.8,
+      "beach_party": 0.2,
+      "gym": 0.1,
+      "formal_event": 0.4,
+      "home_relax": 0.7
+    }
+  },
+  "gloves": {
+    "event": {
+      "casual_walk": 0.8,
+      "picnic": 0.5,
+      "date": 0.4,
+      "work_meeting": 0.4,
+      "hiking": 0.9,
+      "beach_party": 0.1,
+      "gym": 0.1,
+      "formal_event": 0.3,
+      "home_relax": 0.8
+    }
+  },
+  "socks": {
+    "event": {
+      "casual_walk": 1.0,
+      "picnic": 0.9,
+      "date": 0.6,
+      "work_meeting": 0.7,
+      "hiking": 0.8,
+      "beach_party": 0.5,
+      "gym": 0.9,
+      "formal_event": 0.6,
+      "home_relax": 1.0
+    }
+  },
+  "underwear": {
+    "event": {
+      "casual_walk": 1.0,
+      "picnic": 1.0,
+      "date": 1.0,
+      "work_meeting": 0.9,
+      "hiking": 1.0,
+      "beach_party": 1.0,
+      "gym": 1.0,
+      "formal_event": 1.0,
+      "home_relax": 1.0
+    }
+  },
+  "swimwear": {
+    "event": {
+      "casual_walk": 0.1,
+      "picnic": 0.3,
+      "date": 0.2,
+      "work_meeting": 0.0,
+      "hiking": 0.1,
+      "beach_party": 1.0,
+      "gym": 0.2,
+      "formal_event": 0.0,
+      "home_relax": 0.3
+    }
+  },
+  "belt": {
+    "event": {
+      "casual_walk": 0.8,
+      "picnic": 0.7,
+      "date": 0.7,
+      "work_meeting": 0.8,
+      "hiking": 0.6,
+      "beach_party": 0.4,
+      "gym": 0.3,
+      "formal_event": 0.9,
+      "home_relax": 0.6
+    }
+  },
+  "bag": {
+    "event": {
+      "casual_walk": 0.8,
+      "picnic": 0.9,
+      "date": 0.7,
+      "work_meeting": 0.9,
+      "hiking": 0.8,
+      "beach_party": 0.6,
+      "gym": 0.4,
+      "formal_event": 0.7,
+      "home_relax": 0.7
+    }
+  },
+  "watch": {
+    "event": {
+      "casual_walk": 0.9,
+      "picnic": 0.8,
+      "date": 0.9,
+      "work_meeting": 0.9,
+      "hiking": 0.6,
+      "beach_party": 0.7,
+      "gym": 0.5,
+      "formal_event": 1.0,
+      "home_relax": 0.7
+    }
+  },
+  "jeans": {
+    "event": {
+      "casual_walk": 1.0,
+      "picnic": 1.0,
+      "date": 0.8,
+      "work_meeting": 0.7,
+      "hiking": 1.0,
+      "beach_party": 0.5,
+      "gym": 0.6,
+      "formal_event": 0.4,
+      "home_relax": 0.9
+    }
+  },
+  "leggings": {
+    "event": {
+      "casual_walk": 0.9,
+      "picnic": 0.8,
+      "date": 0.6,
+      "work_meeting": 0.3,
+      "hiking": 0.8,
+      "beach_party": 0.6,
+      "gym": 1.0,
+      "formal_event": 0.1,
+      "home_relax": 1.0
+    }
+  },
+  "tank_top": {
+    "event": {
+      "casual_walk": 0.8,
+      "picnic": 0.9,
+      "date": 0.7,
+      "work_meeting": 0.1,
+      "hiking": 0.8,
+      "beach_party": 1.0,
+      "gym": 0.9,
+      "formal_event": 0.0,
+      "home_relax": 0.9
+    }
+  },
+  "overalls": {
+    "event": {
+      "casual_walk": 0.7,
+      "picnic": 0.7,
+      "date": 0.5,
+      "work_meeting": 0.3,
+      "hiking": 0.6,
+      "beach_party": 0.5,
+      "gym": 0.3,
+      "formal_event": 0.2,
+      "home_relax": 0.6
+    }
+  },
+  "beanie": {
+    "event": {
+      "casual_walk": 0.7,
+      "picnic": 0.6,
+      "date": 0.4,
+      "work_meeting": 0.1,
+      "hiking": 0.8,
+      "beach_party": 0.3,
+      "gym": 0.2,
+      "formal_event": 0.1,
+      "home_relax": 0.7
+    }
+  }
+}

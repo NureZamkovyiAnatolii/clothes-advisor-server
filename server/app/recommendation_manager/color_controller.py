@@ -1,189 +1,71 @@
 from colorsys import rgb_to_hsv
 
+def hue_distance(h1, h2):
+    """Найкоротша відстань між двома відтінками у градусах."""
+    return min(abs(h1 - h2), 360 - abs(h1 - h2))
 
-def is_monochromatic(color1: tuple, color2: tuple, hue_tolerance: float = 5.0) -> bool:
-    """
-    Checks if two RGB colors belong to the same monochromatic palette.
-    Parameters:
-        color1, color2 — RGB tuples (0-255)
-        hue_tolerance — allowed hue deviation in degrees (0-360)
-    """
+def normalize_score(diff, ideal=0.0, max_range=180.0):
+    """Нормалізує різницю до значення в діапазоні [0, 1]."""
+    return max(0.0, 1.0 - abs(diff - ideal) / max_range)
+
+def get_hues(color1, color2):
     r1, g1, b1 = [x / 255.0 for x in color1]
     r2, g2, b2 = [x / 255.0 for x in color2]
-
     h1, _, _ = rgb_to_hsv(r1, g1, b1)
     h2, _, _ = rgb_to_hsv(r2, g2, b2)
+    return h1 * 360, h2 * 360
 
-    hue1 = h1 * 360
-    hue2 = h2 * 360
+def monochromatic_score(color1, color2):
+    h1, h2 = get_hues(color1, color2)
+    diff = hue_distance(h1, h2)
+    return normalize_score(diff, ideal=0.0, max_range=30.0)  # 60° max для монохромних
 
-    return abs(hue1 - hue2) <= hue_tolerance
+def analogous_score(color1, color2):
+    h1, h2 = get_hues(color1, color2)
+    diff = hue_distance(h1, h2)
+    return normalize_score(diff, ideal=0.0, max_range=60.0)  # ~30° з кожного боку
 
+def complementary_score(color1, color2):
+    h1, h2 = get_hues(color1, color2)
+    diff = hue_distance(h1, h2)
+    return normalize_score(diff, ideal=180.0, max_range=180.0)
 
-def is_analogous(color1: tuple, color2: tuple, max_hue_difference: float = 30.0) -> bool:
-    """
-    Checks if two RGB colors are analogous (located next to each other on the color wheel).
-    Parameters:
-        color1, color2 — RGB tuples (0-255)
-        max_hue_difference — maximum allowed hue difference in degrees
-    """
-    r1, g1, b1 = [x / 255.0 for x in color1]
-    r2, g2, b2 = [x / 255.0 for x in color2]
+def split_complementary_score(color1, color2):
+    h1, h2 = get_hues(color1, color2)
+    comp_hue = (h1 + 180) % 360
+    split1 = (comp_hue - 30) % 360
+    split2 = (comp_hue + 30) % 360
+    score1 = normalize_score(hue_distance(h2, split1), ideal=0.0, max_range=60.0)
+    score2 = normalize_score(hue_distance(h2, split2), ideal=0.0, max_range=60.0)
+    return max(score1, score2)
 
-    h1, _, _ = rgb_to_hsv(r1, g1, b1)
-    h2, _, _ = rgb_to_hsv(r2, g2, b2)
+def triadic_score(color1, color2):
+    h1, h2 = get_hues(color1, color2)
+    triad1 = (h1 + 120) % 360
+    triad2 = (h1 - 120) % 360
+    score1 = normalize_score(hue_distance(h2, triad1), ideal=0.0, max_range=60.0)
+    score2 = normalize_score(hue_distance(h2, triad2), ideal=0.0, max_range=60.0)
+    return max(score1, score2)
 
-    hue1 = h1 * 360
-    hue2 = h2 * 360
+def rectangle_palette_score(color1, color2):
+    h1, h2 = get_hues(color1, color2)
+    hues = [(h1 + 60) % 360, (h1 + 180) % 360, (h1 + 240) % 360]
+    scores = [normalize_score(hue_distance(h2, target), ideal=0.0, max_range=60.0) for target in hues]
+    return max(scores)
 
-    hue_diff = abs(hue1 - hue2)
-    hue_diff = min(hue_diff, 360 - hue_diff)  # account for circular hue values
-
-    return hue_diff <= max_hue_difference
-
-
-def is_complementary(color1: tuple, color2: tuple, hue_tolerance: float = 15.0) -> bool:
-    """
-    Checks if two RGB colors are complementary.
-    Parameters:
-        color1, color2 — RGB tuples (0-255)
-        hue_tolerance — allowed deviation from 180 degrees in hue
-    """
-    r1, g1, b1 = [x / 255.0 for x in color1]
-    r2, g2, b2 = [x / 255.0 for x in color2]
-
-    h1, _, _ = rgb_to_hsv(r1, g1, b1)
-    h2, _, _ = rgb_to_hsv(r2, g2, b2)
-
-    hue1 = h1 * 360
-    hue2 = h2 * 360
-
-    hue_diff = abs(hue1 - hue2)
-    hue_diff = min(hue_diff, 360 - hue_diff)  # account for the color wheel
-
-    return abs(hue_diff - 180) <= hue_tolerance
-
-
-def is_split_complementary(color1: tuple, color2: tuple, hue_tolerance: float = 15.0, split_angle: float = 30.0) -> bool:
-    """
-    Checks if the second color is one of the split-complementary colors of the first.
-    color1 — base color
-    color2 — the color to check
-    """
-    r1, g1, b1 = [x / 255.0 for x in color1]
-    r2, g2, b2 = [x / 255.0 for x in color2]
-
-    h1, _, _ = rgb_to_hsv(r1, g1, b1)
-    h2, _, _ = rgb_to_hsv(r2, g2, b2)
-
-    hue1 = h1 * 360
-    hue2 = h2 * 360
-
-    # Complementary hue
-    comp_hue = (hue1 + 180) % 360
-    # Two split-complementary hues
-    split1 = (comp_hue - split_angle) % 360
-    split2 = (comp_hue + split_angle) % 360
-
-    def close(a, b):
-        return abs((a - b + 180) % 360 - 180) <= hue_tolerance
-
-    return close(hue2, split1) or close(hue2, split2)
-
-
-def is_triadic(color1: tuple, color2: tuple, hue_tolerance: float = 15.0) -> bool:
-    """
-    Checks if the second color forms a triadic pair with the first.
-    color1 — base color (RGB)
-    color2 — the color to check
-    """
-    r1, g1, b1 = [x / 255.0 for x in color1]
-    r2, g2, b2 = [x / 255.0 for x in color2]
-
-    h1, _, _ = rgb_to_hsv(r1, g1, b1)
-    h2, _, _ = rgb_to_hsv(r2, g2, b2)
-
-    hue1 = h1 * 360
-    hue2 = h2 * 360
-
-    triad1 = (hue1 + 120) % 360
-    triad2 = (hue1 - 120) % 360
-
-    def close(a, b):
-        return abs((a - b + 180) % 360 - 180) <= hue_tolerance
-
-    return close(hue2, triad1) or close(hue2, triad2)
-
-
-def is_rectangle_palette_match(color1: tuple, color2: tuple, hue_tolerance: float = 15.0) -> bool:
-    """
-    Checks if the second color forms a rectangular palette with the first.
-    """
-    r1, g1, b1 = [x / 255.0 for x in color1]
-    r2, g2, b2 = [x / 255.0 for x in color2]
-
-    h1, _, _ = rgb_to_hsv(r1, g1, b1)
-    h2, _, _ = rgb_to_hsv(r2, g2, b2)
-
-    hue1 = h1 * 360
-    hue2 = h2 * 360
-
-    # Determine hues for a rectangular palette
-    hues = [
-        (hue1 + 60) % 360,
-        (hue1 + 180) % 360,
-        (hue1 + 240) % 360
-    ]
-
-    def close(a, b):
-        return abs((a - b + 180) % 360 - 180) <= hue_tolerance
-
-    return any(close(hue2, h) for h in hues)
-
-def is_color_match(color1: tuple, color2: tuple, palette_type: str, hue_tolerance: float = 15.0) -> bool:
-    """
-    Використовує відповідну функцію, щоб перевірити, чи два кольори відповідають зазначеній гамі.
-
-    Parameters:
-        color1, color2 — RGB кортежі (0-255)
-        palette_type — тип гами: 'monochromatic', 'analogous', 'complementary',
-                        'split_complementary', 'triadic', 'rectangle'
-        hue_tolerance — допустиме відхилення по тону в градусах
-    Returns:
-        bool — чи відповідають кольори заданій гамі
-    """
+def color_match_score(color1: tuple, color2: tuple, palette_type: str) -> float:
     palette_type = palette_type.lower()
-
     if palette_type == "monochromatic":
-        return is_monochromatic(color1, color2, hue_tolerance=hue_tolerance)
-    
+        return monochromatic_score(color1, color2)
     elif palette_type == "analogous":
-        return is_analogous(color1, color2, max_hue_difference=30.0)
-    
+        return analogous_score(color1, color2)
     elif palette_type == "complementary":
-        return is_complementary(color1, color2, hue_tolerance=hue_tolerance)
-    
+        return complementary_score(color1, color2)
     elif palette_type == "split_complementary":
-        return is_split_complementary(color1, color2, hue_tolerance=30.0)
-    
+        return split_complementary_score(color1, color2)
     elif palette_type == "triadic":
-        return is_triadic(color1, color2, hue_tolerance=hue_tolerance)
-    
+        return triadic_score(color1, color2)
     elif palette_type == "rectangle":
-        return is_rectangle_palette_match(color1, color2, hue_tolerance=hue_tolerance)
-    
+        return rectangle_palette_score(color1, color2)
     else:
         raise ValueError(f"❌ Unsupported palette type: '{palette_type}'")
-
-
-color_a = (255, 100, 50)   # bright red
-color_b = (255, 180, 60)   # orange
-print(is_monochromatic(color_a, color_b))  # True if they have similar hue
-
-print(is_analogous(color_a, color_b))  # True because the hues are close
-
-print(is_complementary(color_a, color_b))  # False, not complementary
-
-blue = (0, 0, 255)
-yellow = (255, 255, 0)
-print(is_complementary(color_a, color_b))  # False, not complementary
