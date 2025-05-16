@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
+import json
+import os
 import re
 import requests
 
 from app.model.сlothing_item import CategoryEnum, ClothingItem, SeasonEnum
 from app.recommendation_manager.color_controller import color_match_score
-from app.recommendation_manager.myjson import get_nested_value
 
 TEMPERATURE_MISMATCH_COEF = 0.6
 
@@ -104,7 +105,35 @@ class AverageRecommendationStrategy(RecommendationStrategy):
         return sum(scores) / len(scores)
 
 
+def get_nested_value(filename: str, path: str):
+    """
+    Отримує вкладене значення з JSON-файлу за шляхом, наприклад: "tshirt.weather.sunny"
 
+    :param filename: Назва JSON-файлу.
+    :param path: Шлях до значення через крапку (наприклад: "tshirt.weather.sunny").
+    :return: Значення або повідомлення про помилку.
+    """
+    try:
+        base_path = os.path.dirname(__file__)
+        full_path = os.path.join(base_path, filename)
+        with open(full_path, 'r', encoding='utf-8') as file:
+            
+            data = json.load(file)
+
+        keys = path.split('.')
+        current = data
+        for key in keys:
+            if isinstance(current, dict) and key in current:
+                current = current[key]
+            else:
+                return f"Шлях '{path}' недійсний. Не знайдено ключ: '{key}'"
+
+        return current
+
+    except FileNotFoundError:
+        return f"Файл '{filename}' не знайдено."
+    except json.JSONDecodeError:
+        return f"Файл '{filename}' не є валідним JSON."
 
 def get_weather_at_time(location: str, target_time: str, api_key: str = "9eb8fb241802a2c7631250c97cbe31cd"):
     url = "https://api.openweathermap.org/data/2.5/forecast"
@@ -196,7 +225,7 @@ def evaluate_event_match(item: ClothingItem, event: str):
     return f"Event match score for {item.category.value} for '{event}': {event_match}"
 
 
-def main():
+def test():
     item = ClothingItem(
         filename="example.jpg",
         name="Cool Jeans",

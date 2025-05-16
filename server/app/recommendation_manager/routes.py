@@ -1,16 +1,19 @@
+import json
+import logging
+import os
 from typing import Optional
 from fastapi import APIRouter, Depends, Form, HTTPException
 from sqlalchemy.orm import Session
-from app.user_manager import get_current_user
+from app.user_manager import get_current_user, oauth2_scheme 
 from app.database import get_db
 from app.model.сlothing_item import ClothingItem
 from fastapi.security import OAuth2PasswordBearer
 
 recommendation_router = APIRouter(tags=["Recommendations"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-from app.recommendation_manager.main import (
+
+from app.recommendation_manager.recommendation_strategies import (
     WeatherRecommendationStrategy,
     ColorRecommendationStrategy,
     EventRecommendationStrategy,
@@ -18,6 +21,7 @@ from app.recommendation_manager.main import (
     WeatherEventStrategy,
     ColorWeatherStrategy,
     AverageRecommendationStrategy,
+    get_nested_value,
 )
 
 @recommendation_router.post("/recommendations")
@@ -55,47 +59,47 @@ async def get_recommendations(
     for idx, item in enumerate(items, start=1):
         item_results = {}
 
-        # Базові стратегії
         if location and target_time:
             weather_strategy = WeatherRecommendationStrategy()
             weather_score = weather_strategy.evaluate(item, location, target_time)
-            item_results["weather_match"] = weather_score
+            item_results["final_match"] = weather_score
 
         if r is not None and g is not None and b is not None and palette_type:
             other_color = (r, g, b)
             color_strategy = ColorRecommendationStrategy()
             color_score = color_strategy.evaluate(item, other_color, palette_type)
-            item_results["color_match"] = color_score
+            item_results["final_match"] = color_score
 
         if event:
             event_strategy = EventRecommendationStrategy()
             event_score = event_strategy.evaluate(item, event)
-            item_results["event_match"] = event_score
+            item_results["final_match"] = event_score
 
-        # Якщо **хоч один параметр не заповнений** — додаємо комбіновані стратегії
-        if not (
+        all_fields_filled = (
             location and target_time and
             r is not None and g is not None and b is not None and
             palette_type and event
-        ):
+        )
+
+        # Додаємо комбіновані стратегії тільки якщо не всі параметри заповнені
+        if not all_fields_filled:
             if r is not None and g is not None and b is not None and palette_type and event:
                 color_event_strategy = ColorEventStrategy()
-                item_results["color_event_match"] = color_event_strategy.evaluate(item, other_color, palette_type, event)
+                score = color_event_strategy.evaluate(item, other_color, palette_type, event)
+                item_results["final_match"] = {"type": "color_event_match", "result": score}
 
             if location and target_time and event:
                 weather_event_strategy = WeatherEventStrategy()
-                item_results["weather_event_match"] = weather_event_strategy.evaluate(item, location, target_time, event)
+                score = weather_event_strategy.evaluate(item, location, target_time, event)
+                item_results["final_match"] = {"type": "weather_event_match", "result": score}
 
             if location and target_time and r is not None and g is not None and b is not None and palette_type:
                 color_weather_strategy = ColorWeatherStrategy()
-                item_results["color_weather_match"] = color_weather_strategy.evaluate(item, other_color, palette_type, location, target_time)
+                score = color_weather_strategy.evaluate(item, other_color, palette_type, location, target_time)
+                item_results["final_match"] = {"type": "color_weather_match", "result": score}
 
-        # Якщо всі параметри заповнені — додаємо лише average_match
-        if (
-            location and target_time and
-            r is not None and g is not None and b is not None and
-            palette_type and event
-        ):
+        # Додаємо лише average_match якщо всі поля заповнені
+        if all_fields_filled:
             average_strategy = AverageRecommendationStrategy()
             avg_score = average_strategy.evaluate(
                 item,
@@ -105,15 +109,100 @@ async def get_recommendations(
                 palette_type,
                 event,
             )
-            item_results["average_match"] = avg_score
+            item_results["final_match"] = {"type": "average_match", "result": avg_score}
 
-        results[f"item_{idx}"] = {
+        results[item.id] = {
             "name": item.name,
             "category": item.category.value,
             **item_results
         }
+    # Завантаження JSON один раз
+    base_path = os.path.dirname(os.path.abspath(__file__))
+    full_path = os.path.join(base_path, "clothing_grouping.json")
+    with open(full_path, "r", encoding="utf-8") as f:
+        grouping = json.load(f)
 
-    return {"detail": "Recommendations computed successfully.", "data": results}
+    def get_category_group(category_name: str, grouping: dict) -> str:
+        for group, categories in grouping.items():
+            if category_name in categories:
+                return group
+        return "unknown"
+
+    # у циклі
+    for item_data in results.values():
+        group = get_category_group(item_data["category"], grouping)
+        logging.info(f"Item {item_data['name']} belongs to group {group}")
+    # у циклі
+    grouped_items = {
+        "tops": [],
+        "bottoms": [],
+        "outerwear": [],
+        "one_piece": []
+    }
+
+    for item_id, item_data in results.items():
+        group = get_category_group(item_data["category"], grouping)
+        item_data["group"] = group
+        grouped_items.setdefault(group, []).append({**item_data, "id": item_id})
+
+    # Створення комбінованих наборів
+    outfits = []
+    def extract_score(item: dict) -> float:
+        match = item.get("final_match")
+        if isinstance(match, dict):
+            return match.get("result", 0.0)
+        elif isinstance(match, (int, float)):
+            return match
+        return 0.0
+
+    def average_score(*items: dict) -> float:
+        scores = [extract_score(item) for item in items]
+        return sum(scores) / len(scores) if scores else 0.0
+
+    # Комбінація tops + bottoms
+    for top in grouped_items.get("tops", []):
+        for bottom in grouped_items.get("bottoms", []):
+            outfits.append({
+                "type": "tops_bottoms",
+                "items": [top["id"], bottom["id"]],
+                "score_avg": average_score(top, bottom)
+            })
+
+    # Комбінація outerwear + bottoms
+    for outer in grouped_items.get("outerwear", []):
+        for bottom in grouped_items.get("bottoms", []):
+            outfits.append({
+                "type": "outerwear_bottoms",
+                "items": [outer["id"], bottom["id"]],
+                "score_avg": average_score(outer, bottom)
+            })
+
+    # Одноелементні набори з one_piece
+    for piece in grouped_items.get("one_piece", []):
+        outfits.append({
+            "type": "one_piece",
+            "items": [piece["id"]],
+            "score_avg": extract_score(piece)
+        })
+    # Додаємо текстове повідомлення щодо сформованих образів
+    outfits_detail = (
+        f"{len(outfits)} outfit(s) generated successfully."
+        if outfits else
+        "No outfit combinations could be generated from your wardrobe."
+    )
+
+    return {
+        "detail": "Recommendations computed successfully.",
+        "data": {
+            "clothes": results,
+            "outfits": {
+                "detail": outfits_detail,
+                "items": outfits
+            }
+        }
+    }
+
+
 
 
 

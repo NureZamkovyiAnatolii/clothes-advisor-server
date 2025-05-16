@@ -1,0 +1,46 @@
+{
+  "outerwear": [
+    "jacket",
+    "coat",
+    "hoodie",
+    "sweater"
+  ],
+  "tops": [
+    "tshirt",
+    "blouse",
+    "tank_top"
+  ],
+  "bottoms": [
+    "pants",
+    "jeans",
+    "shorts",
+    "skirt",
+    "leggings"
+  ],
+  "one_piece": [
+    "dress",
+    "overalls",
+    "swimwear"
+  ],
+  "footwear": [
+    "shoes",
+    "boots",
+    "sneakers",
+    "sandals"
+  ],
+  "headwear": [
+    "hat",
+    "beanie"
+  ],
+  "accessories": [
+    "scarf",
+    "gloves",
+    "belt",
+    "bag",
+    "watch"
+  ],
+  "underwear": [
+    "underwear",
+    "socks"
+  ]
+}
