@@ -1,3 +1,5 @@
+from fastapi import HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date
@@ -16,6 +18,8 @@ def get_clothing_stats_by_category(db: Session, token: str):
     """
 
     user = get_current_user(token, db)
+    if user is None or type(user) is JSONResponse:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     today = date.today()
 
     # Subquery for average age using DATEDIFF for MySQL

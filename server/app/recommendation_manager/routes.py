@@ -3,11 +3,13 @@ import logging
 import os
 from typing import Optional
 from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from app.user_manager import get_current_user, oauth2_scheme 
 from app.database import get_db
 from app.model.сlothing_item import ClothingItem
 from fastapi.security import OAuth2PasswordBearer
+import time
 
 recommendation_router = APIRouter(tags=["Recommendations"])
 
@@ -21,7 +23,6 @@ from app.recommendation_manager.recommendation_strategies import (
     WeatherEventStrategy,
     ColorWeatherStrategy,
     AverageRecommendationStrategy,
-    get_nested_value,
 )
 
 @recommendation_router.post("/recommendations")
@@ -36,8 +37,10 @@ async def get_recommendations(
     palette_type: Optional[str] = Form(None),
     event: Optional[str] = Form(None),
 ):
+    start_time = time.perf_counter()
+    logging.info("Starting recommendation process...")
     user = get_current_user(token, db)
-    if user is None:
+    if user is None or type(user) is JSONResponse:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     def parse_color_component(value: Optional[str]) -> Optional[int]:
@@ -190,6 +193,9 @@ async def get_recommendations(
         if outfits else
         "No outfit combinations could be generated from your wardrobe."
     )
+    outfits.sort(key=lambda x: x["score_avg"], reverse=True)
+    duration = time.perf_counter() - start_time
+    logging.info(f"⏳Request to /recommendations processed in {duration:.3f} seconds.")
 
     return {
         "detail": "Recommendations computed successfully.",
