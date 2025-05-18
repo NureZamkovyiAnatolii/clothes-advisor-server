@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 import json
 import logging
 import os
@@ -6,6 +7,7 @@ import time
 from typing import Optional
 from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import JSONResponse
+import requests
 from sqlalchemy.orm import Session
 from app.user_manager import get_current_user, oauth2_scheme
 from app.database import get_db
@@ -22,6 +24,39 @@ from app.recommendation_manager.recommendation_strategies import (
 
 recommendation_router = APIRouter(tags=["Recommendations"])
 
+def get_weather_at_time(location: str, target_time: str, api_key: str = "9eb8fb241802a2c7631250c97cbe31cd"):
+    url = "https://api.openweathermap.org/data/2.5/forecast"
+    params = {
+        "appid": api_key,
+        "q": location,
+        "units": "metric"
+    }
+
+    response = requests.get(url, params=params)
+    data = response.json()
+
+    if response.status_code != 200 or "list" not in data:
+        return f"❌ Failed to retrieve data for {location}."
+
+    forecasts = data["list"]
+    target_time_dt = datetime.strptime(target_time, "%Y-%m-%d %H:%M:%S")
+
+    for forecast in forecasts:
+        forecast_time = datetime.strptime(
+            forecast["dt_txt"], "%Y-%m-%d %H:%M:%S")
+        if forecast_time == target_time_dt:
+            temp = forecast["main"]["temp"]
+            weather = forecast["weather"][0]["description"]
+            return temp, weather
+
+    closest_forecast = min(
+        forecasts,
+        key=lambda x: abs(datetime.strptime(
+            x["dt_txt"], "%Y-%m-%d %H:%M:%S") - target_time_dt)
+    )
+    temp = closest_forecast["main"]["temp"]
+    weather = closest_forecast["weather"][0]["description"]
+    return temp, weather
 
 @recommendation_router.post("/recommendations")
 async def get_recommendations(
@@ -68,13 +103,14 @@ async def get_recommendations(
     # === Evaluation Block ===
     start = time.perf_counter()
     results = {}
+    temp, weather = get_weather_at_time(location, target_time) if location and target_time else (None, None)
     def evaluate_item(item : ClothingItem):
         item_results = {}
         other_color = (r, g, b) if None not in (r, g, b) else None
         all_fields_filled = all([location, target_time, r is not None, g is not None, b is not None, palette_type, event])
 
         if location and target_time:
-            weather_score = WeatherRecommendationStrategy().evaluate(item, location, target_time)
+            weather_score = WeatherRecommendationStrategy().evaluate(item, float(temp), weather)
             item_results["final_match"] = weather_score
 
         if other_color and palette_type:
@@ -90,14 +126,14 @@ async def get_recommendations(
                 score = ColorEventStrategy().evaluate(item, other_color, palette_type, event)
                 item_results["final_match"] = {"type": "color_event_match", "result": score}
             if location and target_time and event:
-                score = WeatherEventStrategy().evaluate(item, location, target_time, event)
+                score = WeatherEventStrategy().evaluate(item, temp, weather, event)
                 item_results["final_match"] = {"type": "weather_event_match", "result": score}
             if location and target_time and other_color and palette_type:
-                score = ColorWeatherStrategy().evaluate(item, other_color, palette_type, location, target_time)
+                score = ColorWeatherStrategy().evaluate(item, other_color, palette_type, temp, weather)
                 item_results["final_match"] = {"type": "color_weather_match", "result": score}
 
         if all_fields_filled:
-            avg_score = AverageRecommendationStrategy().evaluate(item, location, target_time, other_color, palette_type, event)
+            avg_score = AverageRecommendationStrategy().evaluate(item, temp, weather, other_color, palette_type, event)
             item_results["final_match"] = {"type": "average_match", "result": avg_score}
 
         return item.id, {

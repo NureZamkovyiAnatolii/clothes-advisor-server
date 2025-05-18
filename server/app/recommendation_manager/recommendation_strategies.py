@@ -26,8 +26,8 @@ class RecommendationStrategy(ABC):
 
 
 class WeatherRecommendationStrategy(RecommendationStrategy):
-    def evaluate(self, clothing_item: ClothingItem, location: str, target_time: str):
-        return clothing_item.evaluate_weather_match(location, target_time)
+    def evaluate(self, clothing_item: ClothingItem, temp: float, weather: str):
+        return clothing_item.evaluate_weather_match(temp, weather, TEMPERATURE_MISMATCH_COEF)
 
 
 class ColorRecommendationStrategy(RecommendationStrategy):
@@ -65,9 +65,9 @@ class WeatherEventStrategy(RecommendationStrategy):
         )
         self.event_strategy = EventRecommendationStrategy()
 
-    def evaluate(self, clothing_item, location, target_time, event):
+    def evaluate(self, clothing_item, temp, weather, event):
         score_weather = extract_score(self.weather_strategy.evaluate(
-            clothing_item, location, target_time))
+            clothing_item, temp, weather))
         score_event = extract_score(
             self.event_strategy.evaluate(clothing_item, event))
         if score_weather is None or score_event is None:
@@ -82,11 +82,11 @@ class ColorWeatherStrategy(RecommendationStrategy):
         self.weather_strategy = WeatherRecommendationStrategy(
         )
 
-    def evaluate(self, clothing_item, other_color, palette_type, location, target_time):
+    def evaluate(self, clothing_item, other_color, palette_type, temp, weather):
         score_color = extract_score(self.color_strategy.evaluate(
             clothing_item, other_color, palette_type))
         score_weather = extract_score(self.weather_strategy.evaluate(
-            clothing_item, location, target_time))
+            clothing_item, temp, weather))
         if score_color is None or score_weather is None:
             return 0
         return (score_weather + score_color) / 2
@@ -98,9 +98,9 @@ class AverageRecommendationStrategy(RecommendationStrategy):
         self.color_strategy = ColorRecommendationStrategy()
         self.event_strategy = EventRecommendationStrategy()
 
-    def evaluate(self, clothing_item, location, target_time, other_color, palette_type, event):
+    def evaluate(self, clothing_item, temp, weather, other_color, palette_type, event):
         score_weather = extract_score(self.weather_strategy.evaluate(
-            clothing_item, location, target_time))
+            clothing_item, temp, weather))
         score_color = extract_score(self.color_strategy.evaluate(
             clothing_item, other_color, palette_type))
         score_event = extract_score(
@@ -143,41 +143,6 @@ def get_nested_value(filename: str, path: str):
         return f"Файл '{filename}' не знайдено."
     except json.JSONDecodeError:
         return f"Файл '{filename}' не є валідним JSON."
-
-
-def get_weather_at_time(location: str, target_time: str, api_key: str = "9eb8fb241802a2c7631250c97cbe31cd"):
-    url = "https://api.openweathermap.org/data/2.5/forecast"
-    params = {
-        "appid": api_key,
-        "q": location,
-        "units": "metric"
-    }
-
-    response = requests.get(url, params=params)
-    data = response.json()
-
-    if response.status_code != 200 or "list" not in data:
-        return f"❌ Failed to retrieve data for {location}."
-
-    forecasts = data["list"]
-    target_time_dt = datetime.strptime(target_time, "%Y-%m-%d %H:%M:%S")
-
-    for forecast in forecasts:
-        forecast_time = datetime.strptime(
-            forecast["dt_txt"], "%Y-%m-%d %H:%M:%S")
-        if forecast_time == target_time_dt:
-            temp = forecast["main"]["temp"]
-            weather = forecast["weather"][0]["description"]
-            return temp, weather
-
-    closest_forecast = min(
-        forecasts,
-        key=lambda x: abs(datetime.strptime(
-            x["dt_txt"], "%Y-%m-%d %H:%M:%S") - target_time_dt)
-    )
-    temp = closest_forecast["main"]["temp"]
-    weather = closest_forecast["weather"][0]["description"]
-    return temp, weather
 
 
 def test():
