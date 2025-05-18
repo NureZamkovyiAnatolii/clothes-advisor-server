@@ -103,5 +103,63 @@ class ClothingItem(Base):
             "blue": self.blue,
             "purchase_date": self.purchase_date.strftime('%Y-%m-%d') if self.purchase_date else None
         }
+    
+    def evaluate_color_match(self, other_color: tuple[int, int, int], palette_type: str):
+        from app.recommendation_manager.color_controller import color_match_score
+        color_rgb = (self.red, self.green, self.blue)
+        color_score = color_match_score(color_rgb, other_color, palette_type)
+        return f"Color match score for {self.category.value} with '{other_color}': {color_score}"
+
+
+    def evaluate_event_match(self, event: str):
+        from app.recommendation_manager.recommendation_strategies import get_nested_value
+        path = f"{self.category.value}.event.{event}"
+        event_match = get_nested_value("event_recommendations.json", path)
+        return f"Event match score for {self.category.value} for '{event}': {event_match}"
+    
+    def evaluate_weather_match(self, location: str, target_time: str):
+        from app.recommendation_manager.recommendation_strategies import get_weather_at_time, get_nested_value, TEMPERATURE_MISMATCH_COEF
+        temp, weather = get_weather_at_time(location, target_time)
+        if isinstance(temp, str):
+            return temp
+
+        clothing_type = self.category.value
+        season = self.season.value
+
+        clothing_weather_path = f"{clothing_type}.weather.{weather}"
+        season_weather_path = f"{season}.weather.{weather}"
+        clothing_temp_range_path = f"{clothing_type}.temperature_range"
+        season_temp_range_path = f"{season}.temperature_range"
+
+        clothing_weather = get_nested_value("weather_recommendations.json", clothing_weather_path)
+        season_weather = get_nested_value("weather_recommendations.json", season_weather_path)
+        clothing_temp_range = get_nested_value("weather_recommendations.json", clothing_temp_range_path)
+        season_temp_range = get_nested_value("weather_recommendations.json", season_temp_range_path)
+
+        def merge_temperature_ranges(range1: str, range2: str) -> str:
+            def parse_range(r):
+                parts = r.replace(" ", "").split("to")
+                return int(parts[0]), int(parts[1])
+
+            min1, max1 = parse_range(range1)
+            min2, max2 = parse_range(range2)
+            return f"{min(min1, min2)} to {max(max1, max2)}"
+
+        def is_temp_in_range(temp: float, temp_range: str) -> bool:
+            parts = temp_range.replace(" ", "").split("to")
+            min_temp = int(parts[0])
+            max_temp = int(parts[1])
+            return min_temp <= temp <= max_temp
+
+        if clothing_weather is None or season_weather is None or clothing_temp_range is None or season_temp_range is None:
+            return f"❌ Missing data for weather evaluation."
+
+        result = max(clothing_weather, season_weather)
+        merged_range = merge_temperature_ranges(clothing_temp_range, season_temp_range)
+
+        if not is_temp_in_range(temp, merged_range):
+            result *= TEMPERATURE_MISMATCH_COEF
+
+        return f"✅ Weather match score for '{clothing_type}' in '{weather}': {result}"
 
 

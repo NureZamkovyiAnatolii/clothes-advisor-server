@@ -140,7 +140,7 @@ def remove_file_by_clothing_item_id(clothing_item_id: int, is_preview: bool, db:
         ClothingItem.id == clothing_item_id).first()
 
     if not clothing_item:
-        raise HTTPException(status_code=404, detail="Clothing item not found.")
+        raise HTTPException(status_code=404, detail="Clothing item not found")
 
     base_name = os.path.splitext(clothing_item.filename)[0]
 
@@ -225,7 +225,7 @@ def get_all_combinations_for_user(
 ) -> list[dict]:
     user_id = get_current_user_id(token, db)
     if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
     combinations = db.query(ClothingCombination).filter_by(
         owner_id=user_id).all()
@@ -264,7 +264,7 @@ def get_all_clothing_items_for_user(
 ):
     user_id = get_current_user_id(token, db)
     if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
     items = db.query(ClothingItem).filter(
         ClothingItem.owner_id == user_id).all()

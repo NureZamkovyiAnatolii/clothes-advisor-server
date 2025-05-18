@@ -177,7 +177,7 @@ async def update_clothing_item(
 
     if not clothing_item or clothing_item.owner_id != current_user.id:
         raise HTTPException(
-            status_code=404, detail="Clothing item not found.")
+            status_code=404, detail="Clothing item not found")
 
     # 🔄 Handle colors (if not provided, use existing ones from the DB)
     red = int(red) if red else clothing_item.red
@@ -319,12 +319,8 @@ async def delete_clothing_item(
     clothing_item = db.query(ClothingItem).filter(
         ClothingItem.id == item_id).first()
 
-    if not clothing_item:
+    if not clothing_item or clothing_item.owner_id != current_user.id:
         raise HTTPException(status_code=404, detail="Clothing item not found")
-
-    if clothing_item.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=403, detail="You are not allowed to delete this item")
 
     # Delete associated file if it exists
     if clothing_item.filename:
@@ -417,7 +413,7 @@ def create_clothing_combination(
 ):
     user_id = get_current_user_id(token, db)
     if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
     combination = create_combination_in_db(
         db=db,
@@ -443,7 +439,7 @@ def delete_clothing_combination(
 ):
     current_user = get_current_user(token, db)
     if not current_user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
     combination = db.query(ClothingCombination).filter(
         ClothingCombination.id == combination_id,

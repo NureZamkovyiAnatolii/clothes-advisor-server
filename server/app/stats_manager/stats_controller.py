@@ -19,7 +19,7 @@ def get_clothing_stats_by_category(db: Session, token: str):
 
     user = get_current_user(token, db)
     if user is None or type(user) is JSONResponse:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Not authenticated")
     today = date.today()
 
     # Subquery for average age using DATEDIFF for MySQL

@@ -42,7 +42,7 @@ async def get_recommendations(
     start = time.perf_counter()
     user = get_current_user(token, db)
     if user is None or isinstance(user, JSONResponse):
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Not authenticated")
     logging.info(f"User authentication took {time.perf_counter() - start:.3f} seconds.")
 
     # === Color Parsing Block ===

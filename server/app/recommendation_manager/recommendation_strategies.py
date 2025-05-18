@@ -6,7 +6,6 @@ import re
 import requests
 
 from app.model.сlothing_item import CategoryEnum, ClothingItem, SeasonEnum
-from app.recommendation_manager.color_controller import color_match_score
 
 TEMPERATURE_MISMATCH_COEF = 0.6
 
@@ -28,17 +27,17 @@ class RecommendationStrategy(ABC):
 
 class WeatherRecommendationStrategy(RecommendationStrategy):
     def evaluate(self, clothing_item: ClothingItem, location: str, target_time: str):
-        return evaluate_weather_match(clothing_item,location, target_time)
+        return clothing_item.evaluate_weather_match(location, target_time)
 
 
 class ColorRecommendationStrategy(RecommendationStrategy):
     def evaluate(self, clothing_item: ClothingItem, other_color: tuple[int, int, int], palette_type: str):
-        return evaluate_color_match(clothing_item,other_color, palette_type)
+        return clothing_item.evaluate_color_match(other_color, palette_type)
 
 
 class EventRecommendationStrategy(RecommendationStrategy):
     def evaluate(self, clothing_item: ClothingItem, event: str):
-        return evaluate_event_match(clothing_item,event)
+        return clothing_item.evaluate_event_match(event)
 
 
 # --- Комбіновані стратегії ---
@@ -47,12 +46,14 @@ class EventRecommendationStrategy(RecommendationStrategy):
 class ColorEventStrategy(RecommendationStrategy):
     def __init__(self):
         self.color_strategy = ColorRecommendationStrategy(
-            )
+        )
         self.event_strategy = EventRecommendationStrategy()
 
     def evaluate(self, clothing_item, other_color, palette_type, event):
-        score_color = extract_score(self.color_strategy.evaluate(clothing_item, other_color, palette_type))
-        score_event = extract_score(self.event_strategy.evaluate(clothing_item, event))
+        score_color = extract_score(self.color_strategy.evaluate(
+            clothing_item, other_color, palette_type))
+        score_event = extract_score(
+            self.event_strategy.evaluate(clothing_item, event))
         if score_color is None or score_event is None:
             return 0
         return (score_color + score_event) / 2
@@ -61,12 +62,14 @@ class ColorEventStrategy(RecommendationStrategy):
 class WeatherEventStrategy(RecommendationStrategy):
     def __init__(self):
         self.weather_strategy = WeatherRecommendationStrategy(
-            )
+        )
         self.event_strategy = EventRecommendationStrategy()
 
     def evaluate(self, clothing_item, location, target_time, event):
-        score_weather = extract_score(self.weather_strategy.evaluate(clothing_item, location, target_time))
-        score_event = extract_score(self.event_strategy.evaluate(clothing_item, event))
+        score_weather = extract_score(self.weather_strategy.evaluate(
+            clothing_item, location, target_time))
+        score_event = extract_score(
+            self.event_strategy.evaluate(clothing_item, event))
         if score_weather is None or score_event is None:
             return 0
         return (score_weather + score_event) / 2
@@ -75,13 +78,15 @@ class WeatherEventStrategy(RecommendationStrategy):
 class ColorWeatherStrategy(RecommendationStrategy):
     def __init__(self):
         self.color_strategy = ColorRecommendationStrategy(
-            )
+        )
         self.weather_strategy = WeatherRecommendationStrategy(
-            )
+        )
 
     def evaluate(self, clothing_item, other_color, palette_type, location, target_time):
-        score_color = extract_score(self.color_strategy.evaluate(clothing_item, other_color, palette_type))
-        score_weather = extract_score(self.weather_strategy.evaluate(clothing_item, location, target_time))
+        score_color = extract_score(self.color_strategy.evaluate(
+            clothing_item, other_color, palette_type))
+        score_weather = extract_score(self.weather_strategy.evaluate(
+            clothing_item, location, target_time))
         if score_color is None or score_weather is None:
             return 0
         return (score_weather + score_color) / 2
@@ -94,11 +99,15 @@ class AverageRecommendationStrategy(RecommendationStrategy):
         self.event_strategy = EventRecommendationStrategy()
 
     def evaluate(self, clothing_item, location, target_time, other_color, palette_type, event):
-        score_weather = extract_score(self.weather_strategy.evaluate(clothing_item, location, target_time))
-        score_color = extract_score(self.color_strategy.evaluate(clothing_item, other_color, palette_type))
-        score_event = extract_score(self.event_strategy.evaluate(clothing_item, event))
+        score_weather = extract_score(self.weather_strategy.evaluate(
+            clothing_item, location, target_time))
+        score_color = extract_score(self.color_strategy.evaluate(
+            clothing_item, other_color, palette_type))
+        score_event = extract_score(
+            self.event_strategy.evaluate(clothing_item, event))
 
-        scores = [score for score in (score_weather, score_color, score_event) if score is not None]
+        scores = [score for score in (
+            score_weather, score_color, score_event) if score is not None]
 
         if not scores:
             return 0
@@ -117,7 +126,7 @@ def get_nested_value(filename: str, path: str):
         base_path = os.path.dirname(__file__)
         full_path = os.path.join(base_path, filename)
         with open(full_path, 'r', encoding='utf-8') as file:
-            
+
             data = json.load(file)
 
         keys = path.split('.')
@@ -134,6 +143,7 @@ def get_nested_value(filename: str, path: str):
         return f"Файл '{filename}' не знайдено."
     except json.JSONDecodeError:
         return f"Файл '{filename}' не є валідним JSON."
+
 
 def get_weather_at_time(location: str, target_time: str, api_key: str = "9eb8fb241802a2c7631250c97cbe31cd"):
     url = "https://api.openweathermap.org/data/2.5/forecast"
@@ -153,7 +163,8 @@ def get_weather_at_time(location: str, target_time: str, api_key: str = "9eb8fb2
     target_time_dt = datetime.strptime(target_time, "%Y-%m-%d %H:%M:%S")
 
     for forecast in forecasts:
-        forecast_time = datetime.strptime(forecast["dt_txt"], "%Y-%m-%d %H:%M:%S")
+        forecast_time = datetime.strptime(
+            forecast["dt_txt"], "%Y-%m-%d %H:%M:%S")
         if forecast_time == target_time_dt:
             temp = forecast["main"]["temp"]
             weather = forecast["weather"][0]["description"]
@@ -161,68 +172,12 @@ def get_weather_at_time(location: str, target_time: str, api_key: str = "9eb8fb2
 
     closest_forecast = min(
         forecasts,
-        key=lambda x: abs(datetime.strptime(x["dt_txt"], "%Y-%m-%d %H:%M:%S") - target_time_dt)
+        key=lambda x: abs(datetime.strptime(
+            x["dt_txt"], "%Y-%m-%d %H:%M:%S") - target_time_dt)
     )
     temp = closest_forecast["main"]["temp"]
     weather = closest_forecast["weather"][0]["description"]
     return temp, weather
-
-
-def evaluate_weather_match(item: ClothingItem, location: str, target_time: str):
-    temp, weather = get_weather_at_time(location, target_time)
-    if isinstance(temp, str):
-        return temp
-
-    clothing_type = item.category.value
-    season = item.season.value
-
-    clothing_weather_path = f"{clothing_type}.weather.{weather}"
-    season_weather_path = f"{season}.weather.{weather}"
-    clothing_temp_range_path = f"{clothing_type}.temperature_range"
-    season_temp_range_path = f"{season}.temperature_range"
-
-    clothing_weather = get_nested_value("weather_recommendations.json", clothing_weather_path)
-    season_weather = get_nested_value("weather_recommendations.json", season_weather_path)
-    clothing_temp_range = get_nested_value("weather_recommendations.json", clothing_temp_range_path)
-    season_temp_range = get_nested_value("weather_recommendations.json", season_temp_range_path)
-
-    def merge_temperature_ranges(range1: str, range2: str) -> str:
-        def parse_range(r):
-            parts = r.replace(" ", "").split("to")
-            return int(parts[0]), int(parts[1])
-
-        min1, max1 = parse_range(range1)
-        min2, max2 = parse_range(range2)
-        return f"{min(min1, min2)} to {max(max1, max2)}"
-
-    def is_temp_in_range(temp: float, temp_range: str) -> bool:
-        parts = temp_range.replace(" ", "").split("to")
-        min_temp = int(parts[0])
-        max_temp = int(parts[1])
-        return min_temp <= temp <= max_temp
-
-    if clothing_weather is None or season_weather is None or clothing_temp_range is None or season_temp_range is None:
-        return f"❌ Missing data for weather evaluation."
-
-    result = max(clothing_weather, season_weather)
-    merged_range = merge_temperature_ranges(clothing_temp_range, season_temp_range)
-
-    if not is_temp_in_range(temp, merged_range):
-        result *= TEMPERATURE_MISMATCH_COEF
-
-    return f"✅ Weather match score for '{clothing_type}' in '{weather}': {result}"
-
-
-def evaluate_color_match(item: ClothingItem, other_color: tuple[int, int, int], palette_type: str):
-    color_rgb = (item.red, item.green, item.blue)
-    color_score = color_match_score(color_rgb, other_color, palette_type)
-    return f"Color match score for {item.category.value} with '{other_color}': {color_score}"
-
-
-def evaluate_event_match(item: ClothingItem, event: str):
-    path = f"{item.category.value}.event.{event}"
-    event_match = get_nested_value("event_recommendations.json", path)
-    return f"Event match score for {item.category.value} for '{event}': {event_match}"
 
 
 def test():
@@ -239,7 +194,7 @@ def test():
     )
 
     location = "Kyiv"
-    target_time = "2025-02-05 12:00:00"
+    target_time = "2025-05-18 12:00:00"
     other_color = (100, 200, 255)
     palette_type = "monochromatic"
     event = "formal_event"
