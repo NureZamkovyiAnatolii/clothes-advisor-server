@@ -175,12 +175,9 @@ async def update_clothing_item(
     clothing_item = db.query(ClothingItem).filter(
         ClothingItem.id == item_id).first()
 
-    if not clothing_item:
-        raise HTTPException(status_code=404, detail="Clothing item not found")
-
-    if clothing_item.owner_id != current_user.id:
+    if not clothing_item or clothing_item.owner_id != current_user.id:
         raise HTTPException(
-            status_code=403, detail="You are not allowed to update this item")
+            status_code=404, detail="Clothing item not found.")
 
     # 🔄 Handle colors (if not provided, use existing ones from the DB)
     red = int(red) if red else clothing_item.red
@@ -285,7 +282,7 @@ def toggle_favorite_item(
 
     if not clothing_item:
         raise HTTPException(
-            status_code=404, detail="Clothing item not found for this user with this ID")
+            status_code=404, detail="Clothing item not found")
 
     # Toggle the value of is_favorite
     clothing_item.is_favorite = not clothing_item.is_favorite
@@ -363,6 +360,7 @@ class CombinationRequest(BaseModel):
     name: str
     item_ids: List[int]
 
+
 @clothing_router.put("/clothing-combinations/{combination_id}")
 def update_clothing_combination(
     combination_id: int,
@@ -372,7 +370,7 @@ def update_clothing_combination(
 ):
     current_user = get_current_user(token, db)
     if not current_user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
     combination = db.query(ClothingCombination).filter(
         ClothingCombination.id == combination_id,
@@ -385,7 +383,8 @@ def update_clothing_combination(
     if request.name:
         combination.name = request.name
     if request.item_ids is not None:
-        items = db.query(ClothingItem).filter(ClothingItem.id.in_(request.item_ids)).all()
+        items = db.query(ClothingItem).filter(
+            ClothingItem.id.in_(request.item_ids)).all()
         found_ids = {item.id for item in items}
         requested_ids = set(request.item_ids)
         missing_ids = requested_ids - found_ids
@@ -393,7 +392,7 @@ def update_clothing_combination(
         if missing_ids:
             raise HTTPException(
                 status_code=400,
-                detail=f"Some clothing items not found: {sorted(missing_ids)}"
+                detail="Some clothing items from request not found."
             )
 
         combination.items = items
@@ -408,6 +407,7 @@ def update_clothing_combination(
         "data": {"combination_id": combination.id},
         "synchronized_at": current_user.synchronized_at_iso
     }
+
 
 @clothing_router.post("/clothing-combinations")
 def create_clothing_combination(
