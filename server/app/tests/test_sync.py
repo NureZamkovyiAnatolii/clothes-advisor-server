@@ -65,7 +65,7 @@ def test_sync_data_with_files(db_session: Session, auth_token):
         "brand": "TestBrand",
         "purchase_date": "2023-01-01",
         "price": 1000.50,
-        "is_favorite": true
+        "is_favorite": True
     },
     {
         "id": 4,  
@@ -80,7 +80,7 @@ def test_sync_data_with_files(db_session: Session, auth_token):
         "brand": "TestBrand",
         "purchase_date": "2023-02-01",
         "price": 1500.75,
-        "is_favorite": false
+        "is_favorite": False
     }
 ]   
     # Старі ID речей
@@ -96,9 +96,14 @@ def test_sync_data_with_files(db_session: Session, auth_token):
     clothing_items_str = json.dumps(clothing_items_data)
     clothing_combinations_str = json.dumps(clothing_combinations_data)
 
-    # Підготовка фейкового зображення
-    file_content = b"fake image data"
-    file = ("files", ("test1.jpg", io.BytesIO(file_content), "image/jpeg"))
+    # Підготовка фейкових зображень
+    file1_content = b"fake image data 1"
+    file2_content = b"fake image data 2"
+
+    files = [
+        ("files", ("test1.jpg", io.BytesIO(file1_content), "image/jpeg")),
+        ("files", ("test2.jpg", io.BytesIO(file2_content), "image/jpeg")),
+    ]
 
     # Надсилання запиту з multipart/form-data
     response = client.post(
@@ -108,7 +113,7 @@ def test_sync_data_with_files(db_session: Session, auth_token):
             "clothing_combinations": clothing_combinations_str,
             "is_server_to_local": False 
         },
-        files=[file],
+        files=files,
         headers=auth_token
     )
 
@@ -135,9 +140,16 @@ def test_sync_data_with_files(db_session: Session, auth_token):
     assert len(combos[0].items) == 2
 
     # Перевірка, що файл існує на сервері
-    saved_filename = items[0].filename
-    file_path = os.path.join("uploads", saved_filename)
-    assert os.path.exists(file_path), f"File {file_path} not found on server"
+    saved_filename = items[0].filename  # ← це URL, наприклад, http://.../uploads/xxx.jpg
+
+    # Витягуємо лише ім’я файлу
+    import os
+    from urllib.parse import urlparse
+
+    filename_only = os.path.basename(urlparse(saved_filename).path)
+    local_path = os.path.join("uploads", filename_only)
+
+    assert os.path.exists(local_path), f"File {local_path} not found on server"
 
     # 🔄 Прибирання за собою (опційно)
     #os.remove(file_path)

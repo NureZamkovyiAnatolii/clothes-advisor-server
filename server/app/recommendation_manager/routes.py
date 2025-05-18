@@ -106,11 +106,11 @@ async def get_recommendations(
             **item_results
         }
 
-    # Запуск у потоках
+    # Use ThreadPoolExecutor to evaluate items in parallel
     with ThreadPoolExecutor() as executor:
         futures = executor.map(evaluate_item, items)
 
-    # Збір результатів
+    # Collect results
     results = {item_id: result for item_id, result in futures}
     logging.info(f"Evaluation took {time.perf_counter() - start:.3f} seconds.")
 

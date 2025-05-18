@@ -27,7 +27,7 @@ def db_session():
 def auth_token(db_session: Session):
     # Login data (replace with real credentials)
     login_data = {
-        "email": "test@gmail.com",
+        "email": "charlie@example.com",
         "password": "pass"
     }
 
@@ -63,7 +63,13 @@ def test_update_clothing_item(db_session, auth_token):
     }
     files = None
     # 3. PUT-запит
-    response = client.put(f"/clothing-items/{13}", json=update_payload, files=files, headers=auth_token)
+    response = client.put(
+    f"/clothing-items/{4}",
+    data=update_payload,  # Form data, значення мають бути рядками
+    files={},             # якщо є файли — {"image": ("filename.jpg", image_data, "image/jpeg")}
+    headers=auth_token
+)
+
 
     # 4. Перевірка відповіді
     assert response.status_code == 200, response.text

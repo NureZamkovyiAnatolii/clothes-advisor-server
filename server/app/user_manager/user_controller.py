@@ -302,7 +302,7 @@ def synchronize_user_data(
         for old_item_id in combo["item_ids"]:
             new_item_id = old_to_new_items_map.get(old_item_id)
             if new_item_id:
-                item = db.query(ClothingItem).get(new_item_id)
+                item = db.get(ClothingItem, new_item_id)
                 if item:
                     new_combo.items.append(item)
 
