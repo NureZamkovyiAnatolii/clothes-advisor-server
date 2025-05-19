@@ -7,6 +7,7 @@ import time
 from typing import Optional
 from fastapi import APIRouter, Depends, Form, HTTPException
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 import requests
 from sqlalchemy.orm import Session
 from app.user_manager import get_current_user, oauth2_scheme
@@ -58,18 +59,28 @@ def get_weather_at_time(location: str, target_time: str, api_key: str = "9eb8fb2
     weather = closest_forecast["weather"][0]["description"]
     return temp, weather
 
+class RecommendationRequest(BaseModel):
+    location: Optional[str]
+    target_time: Optional[str]
+    red: Optional[str]
+    green: Optional[str]
+    blue: Optional[str]
+    palette_type: Optional[str]
+    event: Optional[str]
+
 @recommendation_router.post("/recommendations")
 async def get_recommendations(
+    data: RecommendationRequest,
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
-    location: Optional[str] = Form(None),
-    target_time: Optional[str] = Form(None),
-    red: Optional[str] = Form(None),
-    green: Optional[str] = Form(None),
-    blue: Optional[str] = Form(None),
-    palette_type: Optional[str] = Form(None),
-    event: Optional[str] = Form(None),
 ):
+    location = data.location
+    target_time = data.target_time
+    red = data.red
+    green = data.green
+    blue = data.blue
+    palette_type = data.palette_type
+    event = data.event
     start_total = time.perf_counter()
     logging.info("Starting recommendation process...")
 
