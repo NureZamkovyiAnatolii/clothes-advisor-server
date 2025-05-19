@@ -157,7 +157,8 @@ def test():
         owner_id=1
     )
 
-    location = "Kyiv"
+    lat = 50.4501
+    lon = 30.5234
     target_time = "2025-05-18 12:00:00"
     other_color = (100, 200, 255)
     palette_type = "monochromatic"
@@ -167,6 +168,6 @@ def test():
     color_strategy = ColorRecommendationStrategy()
     event_strategy = EventRecommendationStrategy()
 
-    print(weather_strategy.evaluate(item, location, target_time))
+    print(weather_strategy.evaluate(item, lat, lon, target_time))
     print(color_strategy.evaluate(item, other_color, palette_type))
     print(event_strategy.evaluate(item, event))

@@ -129,7 +129,7 @@ def seed_clothing_items(db: Session):
             "brand": "Uniqlo",
             "purchase_date": date(2023, 4, 10),
             "price": 199.00,
-            "is_favorite": False,
+            "is_favorite": True,
             "owner_id": 1
         },
         {
@@ -142,7 +142,7 @@ def seed_clothing_items(db: Session):
             "brand": "Uniqlo",
             "purchase_date": date(2023, 4, 10),
             "price": 199.00,
-            "is_favorite": False,
+            "is_favorite": True,
             "owner_id": 1
         },
         {
@@ -155,7 +155,7 @@ def seed_clothing_items(db: Session):
             "brand": "Uniqlo",
             "purchase_date": date(2023, 4, 10),
             "price": 199.00,
-            "is_favorite": False,
+            "is_favorite": True,
             "owner_id": 1
         },
         {
@@ -194,7 +194,7 @@ def seed_clothing_items(db: Session):
             "brand": "Uniqlo",
             "purchase_date": date(2023, 4, 10),
             "price": 199.00,
-            "is_favorite": False,
+            "is_favorite": True,
             "owner_id": 1
         },
         {
@@ -233,7 +233,7 @@ def seed_clothing_items(db: Session):
             "brand": "Uniqlo",
             "purchase_date": date(2023, 4, 10),
             "price": 199.00,
-            "is_favorite": False,
+            "is_favorite": True,
             "owner_id": 1
         }
     ]

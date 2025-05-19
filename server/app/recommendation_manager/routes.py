@@ -22,7 +22,7 @@ from app.recommendation_manager.recommendation_strategies import (
     ColorWeatherStrategy,
     AverageRecommendationStrategy,
 )
-
+UNFAVORITE_NERF_COEF = 0.8
 recommendation_router = APIRouter(tags=["Recommendations"])
 
 def get_weather_at_time_by_coords(lat: float, lon: float, target_time: str, api_key: str = "9eb8fb241802a2c7631250c97cbe31cd"):
@@ -68,6 +68,8 @@ class RecommendationRequest(BaseModel):
     blue: Optional[str]
     palette_type: Optional[str]
     event: Optional[str]
+    include_favorites: Optional[bool] = False
+
 
 @recommendation_router.post("/recommendations")
 async def get_recommendations(
@@ -83,6 +85,7 @@ async def get_recommendations(
     blue = data.blue
     palette_type = data.palette_type
     event = data.event
+    include_favorites = data.include_favorites
     start_total = time.perf_counter()
     logging.info("Starting recommendation process...")
 
@@ -112,7 +115,6 @@ async def get_recommendations(
     if not items:
         return {"detail": "No clothing items found for user.", "data": {}}
     logging.info(f"Fetching items took {time.perf_counter() - start:.3f} seconds.")
-
     # === Evaluation Block ===
     start = time.perf_counter()
     results = {}
@@ -150,12 +152,18 @@ async def get_recommendations(
             avg_score = AverageRecommendationStrategy().evaluate(item, temp, weather, other_color, palette_type, event)
             item_results["final_match"] = {"type": "average_match", "result": avg_score}
 
+        # Apply nerf for unfavorited items
+        if include_favorites and not item.is_favorite:
+            match = item_results.get("final_match")
+            if isinstance(match, dict) and "result" in match:
+                match["result"] *= UNFAVORITE_NERF_COEF
+            elif isinstance(match, (int, float)):
+                item_results["final_match"] *= UNFAVORITE_NERF_COEF
         return item.id, {
             "name": item.name,
             "category": item.category.value,
             **item_results
         }
-
     # Use ThreadPoolExecutor to evaluate items in parallel
     with ThreadPoolExecutor() as executor:
         futures = executor.map(evaluate_item, items)
