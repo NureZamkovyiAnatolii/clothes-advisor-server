@@ -40,7 +40,7 @@ class EventRecommendationStrategy(RecommendationStrategy):
         return clothing_item.evaluate_event_match(event)
 
 
-# --- Комбіновані стратегії ---
+# --- Combined strategies for different scenarios ---
 
 
 class ColorEventStrategy(RecommendationStrategy):
@@ -116,17 +116,16 @@ class AverageRecommendationStrategy(RecommendationStrategy):
 
 def get_nested_value(filename: str, path: str):
     """
-    Отримує вкладене значення з JSON-файлу за шляхом, наприклад: "tshirt.weather.sunny"
+    Retrieves a nested value from a JSON file by a dot-separated path, e.g., "tshirt.weather.sunny".
 
-    :param filename: Назва JSON-файлу.
-    :param path: Шлях до значення через крапку (наприклад: "tshirt.weather.sunny").
-    :return: Значення або повідомлення про помилку.
+    :param filename: Name of the JSON file.
+    :param path: Dot-separated path to the value (e.g., "tshirt.weather.sunny").
+    :return: The value or an error message.
     """
     try:
         base_path = os.path.dirname(__file__)
         full_path = os.path.join(base_path, filename)
         with open(full_path, 'r', encoding='utf-8') as file:
-
             data = json.load(file)
 
         keys = path.split('.')
@@ -135,14 +134,14 @@ def get_nested_value(filename: str, path: str):
             if isinstance(current, dict) and key in current:
                 current = current[key]
             else:
-                return f"Шлях '{path}' недійсний. Не знайдено ключ: '{key}'"
+                return f"Path '{path}' is invalid. Key not found: '{key}'"
 
         return current
 
     except FileNotFoundError:
-        return f"Файл '{filename}' не знайдено."
+        return f"File '{filename}' not found."
     except json.JSONDecodeError:
-        return f"Файл '{filename}' не є валідним JSON."
+        return f"File '{filename}' is not valid JSON."
 
 
 def test():

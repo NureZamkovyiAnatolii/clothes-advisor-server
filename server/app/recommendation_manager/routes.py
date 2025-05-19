@@ -25,11 +25,12 @@ from app.recommendation_manager.recommendation_strategies import (
 
 recommendation_router = APIRouter(tags=["Recommendations"])
 
-def get_weather_at_time(location: str, target_time: str, api_key: str = "9eb8fb241802a2c7631250c97cbe31cd"):
+def get_weather_at_time_by_coords(lat: float, lon: float, target_time: str, api_key: str = "9eb8fb241802a2c7631250c97cbe31cd"):
     url = "https://api.openweathermap.org/data/2.5/forecast"
     params = {
         "appid": api_key,
-        "q": location,
+        "lat": lat,
+        "lon": lon,
         "units": "metric"
     }
 
@@ -37,30 +38,30 @@ def get_weather_at_time(location: str, target_time: str, api_key: str = "9eb8fb2
     data = response.json()
 
     if response.status_code != 200 or "list" not in data:
-        return f"❌ Failed to retrieve data for {location}."
+        return f"❌ Failed to retrieve data for coordinates: ({lat}, {lon})."
 
     forecasts = data["list"]
     target_time_dt = datetime.strptime(target_time, "%Y-%m-%d %H:%M:%S")
 
     for forecast in forecasts:
-        forecast_time = datetime.strptime(
-            forecast["dt_txt"], "%Y-%m-%d %H:%M:%S")
+        forecast_time = datetime.strptime(forecast["dt_txt"], "%Y-%m-%d %H:%M:%S")
         if forecast_time == target_time_dt:
             temp = forecast["main"]["temp"]
             weather = forecast["weather"][0]["description"]
             return temp, weather
 
+    
     closest_forecast = min(
         forecasts,
-        key=lambda x: abs(datetime.strptime(
-            x["dt_txt"], "%Y-%m-%d %H:%M:%S") - target_time_dt)
+        key=lambda x: abs(datetime.strptime(x["dt_txt"], "%Y-%m-%d %H:%M:%S") - target_time_dt)
     )
     temp = closest_forecast["main"]["temp"]
     weather = closest_forecast["weather"][0]["description"]
     return temp, weather
 
 class RecommendationRequest(BaseModel):
-    location: Optional[str]
+    lat: Optional[float]
+    lon: Optional[float]
     target_time: Optional[str]
     red: Optional[str]
     green: Optional[str]
@@ -74,7 +75,8 @@ async def get_recommendations(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
-    location = data.location
+    lat = data.lat
+    lon = data.lon
     target_time = data.target_time
     red = data.red
     green = data.green
@@ -114,7 +116,8 @@ async def get_recommendations(
     # === Evaluation Block ===
     start = time.perf_counter()
     results = {}
-    temp, weather = get_weather_at_time(location, target_time) if location and target_time else (None, None)
+    location = True if lat and lon else False
+    temp, weather = get_weather_at_time_by_coords(lat, lon, target_time) if location and target_time else (None, None)
     def evaluate_item(item : ClothingItem):
         item_results = {}
         other_color = (r, g, b) if None not in (r, g, b) else None
@@ -214,14 +217,29 @@ async def get_recommendations(
 
     total_duration = time.perf_counter() - start_total
     logging.info(f"\u23f3Request to /recommendations processed in {total_duration:.3f} seconds.")
-
-    return {
-        "detail": "Recommendations computed successfully.",
-        "data": {
-            "clothes": results,
-            "outfits": {
-                "detail": outfits_detail,
-                "items": outfits
+    if location:
+        return {
+            "detail": "Recommendations computed successfully.",
+            "data": {
+                "weather": {
+                    "temp": temp,
+                    "weather": weather
+                },  
+                "clothes": results,
+                "outfits": {
+                    "detail": outfits_detail,
+                    "items": outfits
+                }
             }
         }
-    }
+    else:
+        return {
+            "detail": "Recommendations computed successfully.",
+            "data": {
+                "clothes": results,
+                "outfits": {
+                    "detail": outfits_detail,
+                    "items": outfits
+                }
+            }
+        }
