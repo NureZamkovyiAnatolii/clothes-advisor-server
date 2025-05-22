@@ -22,12 +22,12 @@ from app.recommendation_manager.recommendation_strategies import (
     ColorWeatherStrategy,
     AverageRecommendationStrategy,
 )
-from app.constants import SERVER_URL, UPLOAD_DIR
+from app.constants import SERVER_URL, UPLOAD_DIR, OPEN_WEATHER_API_KEY
 UNFAVORITE_NERF_COEF = 0.8
 recommendation_router = APIRouter(tags=["Recommendations"])
 
 
-def get_weather_at_time_by_coords(lat: float, lon: float, target_time: str, api_key: str = "9eb8fb241802a2c7631250c97cbe31cd"):
+def get_weather_at_time_by_coords(lat: float, lon: float, target_time: str, api_key: str = OPEN_WEATHER_API_KEY):
     url = "https://api.openweathermap.org/data/2.5/forecast"
     params = {
         "appid": api_key,
