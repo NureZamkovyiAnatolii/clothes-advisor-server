@@ -31,25 +31,28 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Час життя токену
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-# 🔹 Хешування пароля
+# 🔹 Hash
 def hash_password(password: str) -> str:
     salt = bcrypt.gensalt()
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
     return hashed_password.decode('utf-8')
 
-# 🔹 Перевірка пароля
-
-
+# 🔹 Verify
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
+# 🔹 Generate JWT token
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    expire = datetime.now(
+        timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})  # Додаємо час дії токену
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# Оновлена функція створення користувача
-
-
+# Create a new user
 async def create_user(db: Session, email: str, password: str, locale: str):
     try:
-        # Перевірка формату email
+        # email verification
         email_regex = r"(^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$)"
         if not re.match(email_regex, email):
             return JSONResponse(
@@ -59,8 +62,6 @@ async def create_user(db: Session, email: str, password: str, locale: str):
                     "data": None
                 }
             )
-
-        # Перевірка, чи email вже існує в базі
         user = db.query(User).filter(User.email == email).first()
         if user:
             return JSONResponse(
@@ -71,10 +72,7 @@ async def create_user(db: Session, email: str, password: str, locale: str):
                 }
             )
 
-        # Хешування пароля
         hashed_password = hash_password(password)
-
-        # Створення користувача
         user = User(
             email=email,
             password=hashed_password,
@@ -85,14 +83,12 @@ async def create_user(db: Session, email: str, password: str, locale: str):
         db.commit()
         db.refresh(user)
 
-        # Створення токену доступу
+        # Token access creation
         token = create_access_token(
             {"sub": email}, expires_delta=timedelta(hours=24))
 
-        # Надсилання посилання для підтвердження електронної пошти
+        # Sending email verification link
         await send_verification_link(email, token, locale)
-
-        # Повернення відповіді про успіх
         return JSONResponse(
             status_code=201,
             content={
@@ -114,14 +110,6 @@ async def create_user(db: Session, email: str, password: str, locale: str):
             }
         )
 
-
-# 🔹 Generate JWT token
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
-    to_encode = data.copy()
-    expire = datetime.now(
-        timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})  # Додаємо час дії токену
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 # 🔹 Authenticate user and generate JWT token
 def authenticate_user(db: Session, email: str, password: str):

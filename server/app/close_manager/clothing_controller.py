@@ -21,9 +21,6 @@ if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
 # Function for saving a file on the server
-
-
-# Function for saving a file on the server
 def save_file(file: UploadFile):
     # Generate a unique filename for the file
     file_extension = file.filename.split('.')[-1]

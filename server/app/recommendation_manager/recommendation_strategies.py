@@ -18,6 +18,34 @@ def extract_score(result: str) -> float | None:
         return float(matches[-1])
     return None
 
+def get_nested_value(filename: str, path: str):
+    """
+    Retrieves a nested value from a JSON file by a dot-separated path, e.g., "tshirt.weather.sunny".
+
+    :param filename: Name of the JSON file.
+    :param path: Dot-separated path to the value (e.g., "tshirt.weather.sunny").
+    :return: The value or an error message.
+    """
+    try:
+        base_path = os.path.dirname(__file__)
+        full_path = os.path.join(base_path, filename)
+        with open(full_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+
+        keys = path.split('.')
+        current = data
+        for key in keys:
+            if isinstance(current, dict) and key in current:
+                current = current[key]
+            else:
+                return f"Path '{path}' is invalid. Key not found: '{key}'"
+
+        return current
+
+    except FileNotFoundError:
+        return f"File '{filename}' not found."
+    except json.JSONDecodeError:
+        return f"File '{filename}' is not valid JSON."
 
 class RecommendationStrategy(ABC):
     @abstractmethod
@@ -114,34 +142,7 @@ class AverageRecommendationStrategy(RecommendationStrategy):
         return sum(scores) / len(scores)
 
 
-def get_nested_value(filename: str, path: str):
-    """
-    Retrieves a nested value from a JSON file by a dot-separated path, e.g., "tshirt.weather.sunny".
 
-    :param filename: Name of the JSON file.
-    :param path: Dot-separated path to the value (e.g., "tshirt.weather.sunny").
-    :return: The value or an error message.
-    """
-    try:
-        base_path = os.path.dirname(__file__)
-        full_path = os.path.join(base_path, filename)
-        with open(full_path, 'r', encoding='utf-8') as file:
-            data = json.load(file)
-
-        keys = path.split('.')
-        current = data
-        for key in keys:
-            if isinstance(current, dict) and key in current:
-                current = current[key]
-            else:
-                return f"Path '{path}' is invalid. Key not found: '{key}'"
-
-        return current
-
-    except FileNotFoundError:
-        return f"File '{filename}' not found."
-    except json.JSONDecodeError:
-        return f"File '{filename}' is not valid JSON."
 
 
 def test():

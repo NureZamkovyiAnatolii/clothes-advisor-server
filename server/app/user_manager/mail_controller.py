@@ -11,9 +11,9 @@ from app.model.user import User
 from app.constants import *
 
 conf = ConnectionConfig(
-    MAIL_USERNAME="clothesadvisor0@gmail.com",
-    MAIL_PASSWORD="juyn xudt moyv uwcx",
-    MAIL_FROM="clothesadvisor0@gmail.com",
+    MAIL_USERNAME=MAIL_USERNAME, 
+    MAIL_PASSWORD=MAIL_PASSWORD,
+    MAIL_FROM=MAIL_USERNAME,
     MAIL_PORT=587,
     MAIL_SERVER="smtp.gmail.com",
     MAIL_STARTTLS=True,
@@ -21,7 +21,6 @@ conf = ConnectionConfig(
 
 )
 
-# Словник для збереження кодів підтвердження (краще використовувати БД)
 verification_codes = {}
 
 def generate_verification_code(length=6) -> str:
@@ -83,7 +82,6 @@ async def send_verification_link(email: str, token: str, locale: Optional[str] =
 
     fm = FastMail(conf)
     await fm.send_message(message)
-
 
 async def verify_code(user_id: int, code: str, db: Session) -> bool:
     logging.debug(f"Current list of verification codes: {verification_codes}")

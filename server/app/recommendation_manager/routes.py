@@ -87,7 +87,7 @@ async def get_recommendations(
 ):
     lat, lon, target_time = data.lat, data.lon, data.target_time
     red, green, blue = data.red, data.green, data.blue
-    palette_types = data.palette_types  # список палітр
+    palette_types = data.palette_types or [""]
     event = data.event
     include_favorites = data.include_favorites
 
@@ -113,9 +113,8 @@ async def get_recommendations(
     if not items:
         return {"detail": "No clothing items found for user.", "data": {}}
 
-    # Оцінюємо кожен тип палітри окремо
-    all_palette_results = {}
-
+    
+    outfits = []
     for palette_type in palette_types:
         def evaluate_item(item: ClothingItem):
             item_results = {}
@@ -164,13 +163,13 @@ async def get_recommendations(
                 **item_results
             }
 
-        # Паралельна оцінка
+        # Parallel evaluation of items
         with ThreadPoolExecutor() as executor:
             futures = executor.map(evaluate_item, items)
 
         results = {item_id: result for item_id, result in futures}
 
-        # Групування
+        # grouping categories
         base_path = os.path.dirname(os.path.abspath(__file__))
         full_path = os.path.join(base_path, "clothing_grouping.json")
         with open(full_path, "r", encoding="utf-8") as f:
@@ -183,13 +182,13 @@ async def get_recommendations(
             return "unknown"
 
         grouped_items = {"tops": [], "bottoms": [], "outerwear": [], "one_piece": []}
+        
         for item_id, item_data in results.items():
             group = get_category_group(item_data["category"], grouping)
             item_data["group"] = group
             grouped_items.setdefault(group, []).append({**item_data, "id": item_id})
 
-        # Генерація образів
-        outfits = []
+        # creating outfits
 
         def extract_score(item: dict) -> float:
             match = item.get("final_match")
@@ -208,7 +207,8 @@ async def get_recommendations(
                 outfits.append({
                     "type": "tops_bottoms",
                     "items": [top, bottom],
-                    "score_avg": average_score(top, bottom)
+                    "score_avg": average_score(top, bottom),
+                    "palette_type": palette_type
                 })
 
         for outer in grouped_items.get("outerwear", []):
@@ -216,26 +216,26 @@ async def get_recommendations(
                 outfits.append({
                     "type": "outerwear_bottoms",
                     "items": [outer, bottom],
-                    "score_avg": average_score(outer, bottom)
+                    "score_avg": average_score(outer, bottom),
+                    "palette_type": palette_type
                 })
 
         for piece in grouped_items.get("one_piece", []):
             outfits.append({
                 "type": "one_piece",
                 "items": [piece],
-                "score_avg": extract_score(piece)
+                "score_avg": extract_score(piece),
+                "palette_type": palette_type
             })
 
         outfits.sort(key=lambda x: x["score_avg"], reverse=True)
-        all_palette_results[palette_type] = {
-            "weather": {"temp": temp, "weather": weather, "icon": icon} if location else None,
-            "outfits": outfits
-        }
-
+        
     total_duration = time.perf_counter() - start_total
     logging.info(f"Request processed in {total_duration:.3f} seconds.")
 
     return {
         "detail": "Recommendations computed successfully for each palette type.",
-        "data": all_palette_results
+        "data":{ 
+        "weather": {"temp": temp, "weather": weather, "icon": icon} if location else None,
+        "outfits": outfits}
     }

@@ -9,8 +9,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, nullable=False)
     password = Column(String(255), unique=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))  # Час створення
-    synchronized_at  = Column(DATETIME(fsp=6), default=datetime.now(timezone.utc))  # Час створення
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))  # Date and time of creation
+    synchronized_at  = Column(DATETIME(fsp=6), default=datetime.now(timezone.utc))  # Date and time of creation first
     is_email_verified = Column(Boolean, default=False)  
     
 
