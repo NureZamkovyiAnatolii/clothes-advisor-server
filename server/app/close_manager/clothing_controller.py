@@ -9,9 +9,9 @@ from datetime import datetime
 from app.model import *
 from app.user_manager import get_current_user_id, SERVER_URL
 from rembg import remove
-
+from app.constants import UPLOAD_DIR
 # Directory for storing files, max file size, and max clothing items/combination counts
-UPLOAD_DIR = "uploads"
+
 MAX_FILE_SIZE_MB = 5
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 MAX_CLOTHING_ITEMS_COUNT = 100
@@ -245,7 +245,7 @@ def get_all_combinations_for_user(
                 "brand": item.brand,
                 "price": item.price,
                 "is_favorite": item.is_favorite,
-                "filename": f"{SERVER_URL}/uploads/{item.filename}"
+                "filename": f"{SERVER_URL}/{UPLOAD_DIR}/{item.filename}"
             }
             for item in combo.items
         ]
@@ -269,7 +269,7 @@ def get_all_clothing_items_for_user(
     items = db.query(ClothingItem).filter(
         ClothingItem.owner_id == user_id).all()
     for item in items:
-        item.filename = f"{SERVER_URL}/uploads/" + item.filename
+        item.filename = f"{SERVER_URL}/{UPLOAD_DIR}/" + item.filename
     result = {}
     for idx, item in enumerate(items, start=1):
         result[f"item_{idx}"] = item

@@ -15,16 +15,17 @@ from fastapi.security import OAuth2PasswordBearer
 
 from app.user_manager.mail_controller import send_password_change_form, send_verification_link
 from app.model import *
-
+from app.constants import *
 
 # Налаштування логування
 logging.basicConfig(level=logging.DEBUG)
 
 # Конфігурація JWT
+
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "supersecretkey")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30  # Час життя токену
-SERVER_URL = os.getenv("SERVER_URL")
+
 
 # FastAPI security scheme (очікує токен у заголовку Authorization)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")

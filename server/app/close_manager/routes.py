@@ -13,11 +13,9 @@ from app.user_manager.user_controller import get_current_user, get_current_user_
 from app.close_manager.clothing_controller import *
 from app.model import *
 from app.user_manager import *
+from app.constants import SERVER_URL
 
 clothing_router = APIRouter(tags=["Close Operations"])
-# Тепер можеш використати змінну
-SERVER_URL = os.getenv("SERVER_URL")
-
 
 def get_dominant_color(file: UploadFile):
     """Determines the dominant color of an image"""
@@ -127,7 +125,7 @@ async def add_clothing_item(
         "detail": "Clothing item added successfully.",
         "data": {
             "id": new_clothing_item.id,
-            "filename": f"{SERVER_URL}/uploads/{new_clothing_item.filename}",
+            "filename": f"{SERVER_URL}/{UPLOAD_DIR}/{new_clothing_item.filename}",
             "name": new_clothing_item.name,
             "category": new_clothing_item.category,
             "season": new_clothing_item.season,
@@ -205,7 +203,7 @@ async def update_clothing_item(
         clothing_item.filename = filename
 
         if old_filename:
-            old_file_path = os.path.join("uploads", old_filename)
+            old_file_path = os.path.join("{UPLOAD_DIR}", old_filename)
             if os.path.exists(old_file_path):
                 try:
                     os.remove(old_file_path)
@@ -220,7 +218,7 @@ async def update_clothing_item(
         "detail": "Clothing item updated successfully.",
         "data": {
             "id": clothing_item.id,
-            "filename": f"{SERVER_URL}/uploads/{clothing_item.filename}",
+            "filename": f"{SERVER_URL}/{UPLOAD_DIR}/{clothing_item.filename}",
             "name": clothing_item.name,
             "category": clothing_item.category,
             "season": clothing_item.season,
@@ -324,7 +322,7 @@ async def delete_clothing_item(
 
     # Delete associated file if it exists
     if clothing_item.filename:
-        file_path = os.path.join("uploads", clothing_item.filename)
+        file_path = os.path.join("{UPLOAD_DIR}", clothing_item.filename)
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
