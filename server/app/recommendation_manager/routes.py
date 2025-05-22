@@ -51,16 +51,19 @@ def get_weather_at_time_by_coords(lat: float, lon: float, target_time: str, api_
         if forecast_time == target_time_dt:
             temp = forecast["main"]["temp"]
             weather = forecast["weather"][0]["description"]
-            return temp, weather
+            icon = forecast["weather"][0]["icon"] if "icon" in forecast["weather"][0] else "None"
+            return temp, weather, icon
 
     closest_forecast = min(
         forecasts,
         key=lambda x: abs(datetime.strptime(
             x["dt_txt"], "%Y-%m-%d %H:%M:%S") - target_time_dt)
     )
+    logging.info(
+        f"Closest forecast found for {closest_forecast['dt_txt']} with temperature {closest_forecast['main']['temp']}°C.")
     temp = closest_forecast["main"]["temp"]
     weather = closest_forecast["weather"][0]["description"]
-    icon = closest_forecast["weather"][0]["icon"]
+    icon = closest_forecast["weather"][0]["icon"] if "icon" in closest_forecast["weather"][0] else "None"
     return temp, weather, icon
 
 
@@ -104,7 +107,7 @@ async def get_recommendations(
     r, g, b = parse_color_component(red), parse_color_component(green), parse_color_component(blue)
     other_color = (r, g, b) if None not in (r, g, b) else None
     location = True if lat and lon else False
-    temp, weather, icon = get_weather_at_time_by_coords(lat, lon, target_time) if location and target_time else (None, None)
+    temp, weather, icon = get_weather_at_time_by_coords(lat, lon, target_time) if location and target_time else (None, None, None)
 
     items = db.query(ClothingItem).filter(ClothingItem.owner_id == user.id).all()
     if not items:
