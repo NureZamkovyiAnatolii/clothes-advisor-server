@@ -181,7 +181,26 @@ async def get_recommendations(
                     return group
             return "unknown"
 
-        grouped_items = {"tops": [], "bottoms": [], "outerwear": [], "one_piece": []}
+        grouped_items = {
+            "tops": [], 
+            "bottoms": [], 
+            "outerwear": [], 
+            "one_piece": [],
+            "footwear": [],
+            "headwear": [],
+            "accessories": [],
+            "underwear": []
+        }
+        optional_groups = ["footwear", "headwear", "accessories", "underwear"]
+        def extend_with_optional_groups(base_items: list, grouped_items: dict, optional_groups: list) -> list:
+            extended = base_items.copy()
+            for group in optional_groups:
+                if grouped_items.get(group):
+                    # Додаємо найкращий елемент з цієї групи (за оцінкою)
+                    best_item = max(grouped_items[group], key=extract_score)
+                    extended.append(best_item)
+            return extended
+
         
         for item_id, item_data in results.items():
             group = get_category_group(item_data["category"], grouping)
@@ -204,26 +223,32 @@ async def get_recommendations(
 
         for top in grouped_items.get("tops", []):
             for bottom in grouped_items.get("bottoms", []):
+                base_items = [top, bottom]
+                full_outfit = extend_with_optional_groups(base_items, grouped_items, optional_groups)
                 outfits.append({
                     "type": "tops_bottoms",
-                    "items": [top, bottom],
+                    "items": full_outfit,
                     "score_avg": average_score(top, bottom),
                     "palette_type": palette_type
                 })
 
         for outer in grouped_items.get("outerwear", []):
             for bottom in grouped_items.get("bottoms", []):
+                base_items = [outer, bottom]
+                full_outfit = extend_with_optional_groups(base_items, grouped_items, optional_groups)
                 outfits.append({
                     "type": "outerwear_bottoms",
-                    "items": [outer, bottom],
+                    "items": full_outfit,
                     "score_avg": average_score(outer, bottom),
                     "palette_type": palette_type
                 })
 
         for piece in grouped_items.get("one_piece", []):
+            base_items = [piece]
+            full_outfit = extend_with_optional_groups(base_items, grouped_items, optional_groups)
             outfits.append({
                 "type": "one_piece",
-                "items": [piece],
+                "items": outfits,
                 "score_avg": extract_score(piece),
                 "palette_type": palette_type
             })
@@ -232,7 +257,7 @@ async def get_recommendations(
         
     total_duration = time.perf_counter() - start_total
     logging.info(f"Request processed in {total_duration:.3f} seconds.")
-
+    logging.info(f"Request generated {len(outfits)} items.")
     return {
         "detail": "Recommendations computed successfully for each palette type.",
         "data":{ 
