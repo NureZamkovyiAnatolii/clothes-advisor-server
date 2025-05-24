@@ -1,3 +1,4 @@
+import logging
 from fastapi import HTTPException
 from sqlalchemy import Boolean, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
@@ -128,7 +129,7 @@ class ClothingItem(Base):
         season_weather = get_nested_value("weather_recommendations.json", season_weather_path)
         clothing_temp_range = get_nested_value("weather_recommendations.json", clothing_temp_range_path)
         season_temp_range = get_nested_value("weather_recommendations.json", season_temp_range_path)
-
+        logging.debug(f"Clothing weather: {clothing_weather}, Season weather: {season_weather}, ")
         def merge_temperature_ranges(range1: str, range2: str) -> str:
             def parse_range(r):
                 parts = r.replace(" ", "").split("to")

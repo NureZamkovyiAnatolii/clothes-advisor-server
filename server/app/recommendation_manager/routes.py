@@ -64,7 +64,9 @@ def get_weather_at_time_by_coords(lat: float, lon: float, target_time: str, api_
     temp = closest_forecast["main"]["temp"]
     weather = closest_forecast["weather"][0]["description"]
     icon = closest_forecast["weather"][0]["icon"] if "icon" in closest_forecast["weather"][0] else "None"
-    return temp, weather, icon
+    code = closest_forecast["weather"][0].get("id", -1)
+    logging.info(f"Weather code: {code}")
+    return temp, weather, icon, code
 
 
 class RecommendationRequest(BaseModel):
@@ -107,7 +109,7 @@ async def get_recommendations(
     r, g, b = parse_color_component(red), parse_color_component(green), parse_color_component(blue)
     other_color = (r, g, b) if None not in (r, g, b) else None
     location = True if lat and lon else False
-    temp, weather, icon = get_weather_at_time_by_coords(lat, lon, target_time) if location and target_time else (None, None, None)
+    temp, weather, icon, code = get_weather_at_time_by_coords(lat, lon, target_time) if location and target_time else (None, None, None)
 
     items = db.query(ClothingItem).filter(ClothingItem.owner_id == user.id).all()
     if not items:
@@ -261,6 +263,6 @@ async def get_recommendations(
     return {
         "detail": "Recommendations computed successfully for each palette type.",
         "data":{ 
-        "weather": {"temp": temp, "weather": weather, "icon": icon} if location else None,
+        "weather": {"temp": temp, "weather": weather, "icon": icon, "code": code} if location else None,
         "outfits": outfits}
     }

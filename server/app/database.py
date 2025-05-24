@@ -43,11 +43,6 @@ if new_tables:
 else:
     print("Tables already exist or no new tables were created.")
 
-# Display all tables registered in Base
-print("🚀Tables registered in Base:")
-for table in Base.metadata.tables:
-    print(f"- {table}")
-
 # Dependency for getting the database session
 def get_db():
     db = SessionLocal()
