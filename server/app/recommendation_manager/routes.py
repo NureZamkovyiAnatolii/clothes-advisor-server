@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import logging
 import os
+import random
 import time
 from typing import List, Optional, Union
 from fastapi import APIRouter, Depends, Form, HTTPException
@@ -168,9 +169,11 @@ async def get_recommendations(
         # Parallel evaluation of items
         with ThreadPoolExecutor() as executor:
             futures = executor.map(evaluate_item, items)
+            
 
         results = {item_id: result for item_id, result in futures}
-
+        formatted_json = json.dumps(results, indent=4, ensure_ascii=False)
+        logging.info(f"📦 Evaluated items:\n{formatted_json}")
         # grouping categories
         base_path = os.path.dirname(os.path.abspath(__file__))
         full_path = os.path.join(base_path, "clothing_grouping.json")
@@ -197,10 +200,18 @@ async def get_recommendations(
         def extend_with_optional_groups(base_items: list, grouped_items: dict, optional_groups: list) -> list:
             extended = base_items.copy()
             for group in optional_groups:
-                if grouped_items.get(group):
-                    # Додаємо найкращий елемент з цієї групи (за оцінкою)
-                    best_item = max(grouped_items[group], key=extract_score)
-                    extended.append(best_item)
+                items = grouped_items.get(group)
+                if items:
+                    # Filter items with score >= 0.7
+                    good_items = [item for item in items if extract_score(item) >= 0.7]
+                    logging.info(f"Good items in {group}: {good_items}")
+                    if len(good_items) >= 2:
+                        # Choose random item with score >= 0.7
+                        chosen_item = random.choice(good_items)
+                    else:
+                        # Else the best item with the highest score
+                        chosen_item = max(items, key=extract_score)
+                    extended.append(chosen_item)
             return extended
 
         
@@ -260,6 +271,7 @@ async def get_recommendations(
     total_duration = time.perf_counter() - start_total
     logging.info(f"Request processed in {total_duration:.3f} seconds.")
     logging.info(f"Request generated {len(outfits)} items.")
+    logging.info(f"Request generated\n {outfits}")
     return {
         "detail": "Recommendations computed successfully for each palette type.",
         "data":{ 

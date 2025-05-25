@@ -155,6 +155,6 @@ class ClothingItem(Base):
         if not is_temp_in_range(temp, merged_range):
             result *= temperature_mismatch
 
-        return f"✅ Weather match score for '{self.category.value}' in '{weather}': {result}"
+        return result
 
 
