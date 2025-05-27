@@ -1,9 +1,7 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
 import json
 import os
 import re
-import requests
 
 from app.model.сlothing_item import CategoryEnum, ClothingItem, SeasonEnum
 
@@ -127,12 +125,11 @@ class AverageRecommendationStrategy(RecommendationStrategy):
         self.event_strategy = EventRecommendationStrategy()
 
     def evaluate(self, clothing_item, temp, weather, other_color, palette_type, event):
-        score_weather = extract_score(self.weather_strategy.evaluate(
-            clothing_item, temp, weather))
-        score_color = extract_score(self.color_strategy.evaluate(
-            clothing_item, other_color, palette_type))
-        score_event = extract_score(
-            self.event_strategy.evaluate(clothing_item, event))
+        score_weather = self.weather_strategy.evaluate(
+            clothing_item, temp, weather)
+        score_color = self.color_strategy.evaluate(
+            clothing_item, other_color, palette_type)
+        score_event = self.event_strategy.evaluate(clothing_item, event)
 
         scores = [score for score in (
             score_weather, score_color, score_event) if score is not None]
@@ -140,9 +137,6 @@ class AverageRecommendationStrategy(RecommendationStrategy):
         if not scores:
             return 0
         return sum(scores) / len(scores)
-
-
-
 
 
 def test():

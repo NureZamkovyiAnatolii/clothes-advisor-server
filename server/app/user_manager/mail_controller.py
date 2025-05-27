@@ -3,6 +3,7 @@ import os
 import random
 import string
 from typing import Optional
+from dotenv import load_dotenv
 from fastapi import HTTPException
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema
 from requests import Session

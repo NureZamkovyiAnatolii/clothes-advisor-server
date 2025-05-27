@@ -12,7 +12,7 @@ from pydantic import BaseModel
 import requests
 from sqlalchemy.orm import Session
 from app.user_manager import get_current_user, oauth2_scheme
-from app.database import get_db
+from app.database.database import get_db
 from app.model.сlothing_item import ClothingItem
 from app.recommendation_manager.recommendation_strategies import (
     WeatherRecommendationStrategy,
@@ -53,7 +53,8 @@ def get_weather_at_time_by_coords(lat: float, lon: float, target_time: str, api_
             temp = forecast["main"]["temp"]
             weather = forecast["weather"][0]["description"]
             icon = forecast["weather"][0]["icon"] if "icon" in forecast["weather"][0] else "None"
-            return temp, weather, icon
+            code = forecast["weather"][0].get("id", -1)
+            return temp, weather, icon, code
 
     closest_forecast = min(
         forecasts,
@@ -110,7 +111,7 @@ async def get_recommendations(
     r, g, b = parse_color_component(red), parse_color_component(green), parse_color_component(blue)
     other_color = (r, g, b) if None not in (r, g, b) else None
     location = True if lat and lon else False
-    temp, weather, icon, code = get_weather_at_time_by_coords(lat, lon, target_time) if location and target_time else (None, None, None)
+    temp, weather, icon, code = get_weather_at_time_by_coords(lat, lon, target_time) if location and target_time else (None, None, None,None)
 
     items = db.query(ClothingItem).filter(ClothingItem.owner_id == user.id).all()
     if not items:
@@ -125,15 +126,15 @@ async def get_recommendations(
 
             if location and target_time:
                 weather_score = WeatherRecommendationStrategy().evaluate(item, float(temp), weather)
-                item_results["final_match"] = weather_score
+                item_results["final_match"] = {"type": "weather_match", "result": weather_score}
 
             if other_color and palette_type:
                 color_score = ColorRecommendationStrategy().evaluate(item, other_color, palette_type)
-                item_results["final_match"] = color_score
+                item_results["final_match"] =  {"type": "color_match", "result": color_score}
 
             if event:
                 event_score = EventRecommendationStrategy().evaluate(item, event)
-                item_results["final_match"] = event_score
+                item_results["final_match"] =  {"type": "event_match", "result": event_score}
 
             if not all_fields_filled:
                 if other_color and palette_type and event:

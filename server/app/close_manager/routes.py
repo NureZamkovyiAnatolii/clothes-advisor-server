@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from app.database import get_db
+from app.database.database import get_db
 from PIL import Image
 from io import BytesIO
 from colorthief import ColorThief

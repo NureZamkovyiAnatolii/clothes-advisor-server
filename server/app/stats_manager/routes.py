@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from requests import Session
 
 from app.stats_manager.stats_controller import get_clothing_stats_by_category
-from app.database import get_db
+from app.database.database import get_db
 from app.user_manager import oauth2_scheme
 
 stats_router = APIRouter(tags=["Stats"])

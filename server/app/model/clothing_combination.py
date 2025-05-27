@@ -1,15 +1,14 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Table
 from sqlalchemy.orm import relationship
-from app.database import Base
-
+from app.database.base import CA_Base
 clothing_combination_items = Table(
     "clothing_combination_items",
-    Base.metadata,
+    CA_Base.metadata,
     Column("combination_id", Integer, ForeignKey("clothing_combinations.id")),
     Column("item_id", Integer, ForeignKey("clothing_items.id"))
 )
 
-class ClothingCombination(Base):
+class ClothingCombination(CA_Base):
     __tablename__ = "clothing_combinations"
 
     id = Column(Integer, primary_key=True, index=True)

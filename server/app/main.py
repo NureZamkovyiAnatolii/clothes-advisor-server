@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import os
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from app.routes import router
@@ -9,10 +10,10 @@ from app.recommendation_manager.routes import recommendation_router
 from app.stats_manager.routes import stats_router
 from app.seeding_manager import seed
 # from app.photo_manager.routes import photo_router  # Import routes
-from .database import engine
+from .database.database import engine
 import logging
 from fastapi.middleware.cors import CORSMiddleware
-
+load_dotenv()
 try:
     connection = engine.connect()
     print("✅ Successfully connected to the database!")
@@ -29,8 +30,7 @@ try:
 
         yield  # App is running
 
-        # Shutdown logic (optional)
-        # print("🔻 Shutting down...")
+       
 
     app = FastAPI(lifespan=lifespan, debug=True)
 

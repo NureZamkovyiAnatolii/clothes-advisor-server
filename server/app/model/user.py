@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 from sqlalchemy import Column, DateTime, Integer,Boolean, String
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.database.base import CA_Base
 from sqlalchemy.dialects.mysql import DATETIME
-class User(Base):
+class User(CA_Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)

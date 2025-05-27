@@ -2,11 +2,10 @@ import logging
 from fastapi import HTTPException
 from sqlalchemy import Boolean, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from app.database import Base
+from app.database.base import CA_Base
 
 from sqlalchemy import Column, Integer, String, ForeignKey, Date, Float
 from sqlalchemy.orm import relationship
-from app.database import Base  # або твоя база Base, якщо інша
 
 from enum import Enum
 from sqlalchemy import Enum as SqlEnum
@@ -49,7 +48,7 @@ class CategoryEnum(str, Enum):
     beanie = "beanie"  # шапка
 
 
-class ClothingItem(Base):
+class ClothingItem(CA_Base):
     __tablename__ = "clothing_items"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -109,14 +108,14 @@ class ClothingItem(Base):
         from app.recommendation_manager.color_controller import color_match_score
         color_rgb = (self.red, self.green, self.blue)
         color_score = color_match_score(color_rgb, other_color, palette_type)
-        return f"Color match score for {self.category.value} with '{other_color}': {color_score}"
+        return float(color_score)
 
 
     def evaluate_event_match(self, event: str):
         from app.recommendation_manager.recommendation_strategies import get_nested_value
         path = f"{self.category.value}.event.{event}"
         event_match = get_nested_value("event_recommendations.json", path)
-        return f"Event match score for {self.category.value} for '{event}': {event_match}"
+        return float(event_match)
     
     def evaluate_weather_match(self, temp:float,weather, temperature_mismatch: float):
         from app.recommendation_manager.recommendation_strategies import  get_nested_value
@@ -147,7 +146,10 @@ class ClothingItem(Base):
             return min_temp <= temp <= max_temp
 
         if clothing_weather is None or season_weather is None or clothing_temp_range is None or season_temp_range is None:
-            return f"❌ Missing data for weather evaluation."
+            logging.error(f"Missing data for weather evaluation: "
+                          f"clothing_weather={clothing_weather}, season_weather={season_weather}, "
+                          f"clothing_temp_range={clothing_temp_range}, season_temp_range={season_temp_range}")
+            return 0.0
 
         result = max(clothing_weather, season_weather)
         merged_range = merge_temperature_ranges(clothing_temp_range, season_temp_range)
@@ -155,6 +157,6 @@ class ClothingItem(Base):
         if not is_temp_in_range(temp, merged_range):
             result *= temperature_mismatch
 
-        return result
+        return float(result)
 
 

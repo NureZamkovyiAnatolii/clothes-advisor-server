@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
 from sqlalchemy.orm import Session
-from app.database import get_db
+from app.database.database import get_db
 from app.model.user import User
 from .user_controller import ALGORITHM, SECRET_KEY, create_user, authenticate_user, get_current_user, get_user_data, hash_password, is_user_verified, oauth2_scheme, send_password_reset_email, synchronize_user_data, update_user_email, update_user_password
 import logging
