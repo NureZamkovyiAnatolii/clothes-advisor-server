@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 import io
 from app.main import app
-from server.app.database.database import SessionLocal, Base, engine, get_db
+from app.database.database import SessionLocal, CA_Base, engine, get_db
 from app.model import *
 from sqlalchemy.orm import Session
 
@@ -14,7 +14,7 @@ client = TestClient(app)
 # Фікстура для тестової бази
 @pytest.fixture(scope="function")
 def db_session():
-    Base.metadata.create_all(bind=engine)
+    CA_Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
     # Переопреділяємо залежність

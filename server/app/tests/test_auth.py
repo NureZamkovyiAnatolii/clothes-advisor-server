@@ -1,6 +1,7 @@
+import os
 from fastapi.testclient import TestClient
 from app.main import app
-
+os.environ["TESTING"] = "1"
 client = TestClient(app)
 
 def test_get_profile_with_token():

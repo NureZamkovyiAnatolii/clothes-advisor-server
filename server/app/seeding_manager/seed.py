@@ -6,7 +6,6 @@ from app.database.database import get_db
 from app.model.user import User
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-
 from app.user_manager.user_controller import hash_password
 from app.model import *
 from concurrent.futures import ThreadPoolExecutor

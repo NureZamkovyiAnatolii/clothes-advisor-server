@@ -8,14 +8,6 @@ from app.model.сlothing_item import CategoryEnum, ClothingItem, SeasonEnum
 TEMPERATURE_MISMATCH_COEF = 0.6
 
 
-def extract_score(result: str) -> float | None:
-    if not result:
-        return None
-    matches = re.findall(r"[-+]?[0-9]*\.?[0-9]+", result)
-    if matches:
-        return float(matches[-1])
-    return None
-
 def get_nested_value(filename: str, path: str):
     """
     Retrieves a nested value from a JSON file by a dot-separated path, e.g., "tshirt.weather.sunny".
@@ -76,10 +68,9 @@ class ColorEventStrategy(RecommendationStrategy):
         self.event_strategy = EventRecommendationStrategy()
 
     def evaluate(self, clothing_item, other_color, palette_type, event):
-        score_color = extract_score(self.color_strategy.evaluate(
-            clothing_item, other_color, palette_type))
-        score_event = extract_score(
-            self.event_strategy.evaluate(clothing_item, event))
+        score_color =self.color_strategy.evaluate(
+            clothing_item, other_color, palette_type)
+        score_event = self.event_strategy.evaluate(clothing_item, event)
         if score_color is None or score_event is None:
             return 0
         return (score_color + score_event) / 2
@@ -92,10 +83,9 @@ class WeatherEventStrategy(RecommendationStrategy):
         self.event_strategy = EventRecommendationStrategy()
 
     def evaluate(self, clothing_item, temp, weather, event):
-        score_weather = extract_score(self.weather_strategy.evaluate(
-            clothing_item, temp, weather))
-        score_event = extract_score(
-            self.event_strategy.evaluate(clothing_item, event))
+        score_weather = self.weather_strategy.evaluate(
+            clothing_item, temp, weather)
+        score_event = self.event_strategy.evaluate(clothing_item, event)
         if score_weather is None or score_event is None:
             return 0
         return (score_weather + score_event) / 2
@@ -109,10 +99,10 @@ class ColorWeatherStrategy(RecommendationStrategy):
         )
 
     def evaluate(self, clothing_item, other_color, palette_type, temp, weather):
-        score_color = extract_score(self.color_strategy.evaluate(
-            clothing_item, other_color, palette_type))
-        score_weather = extract_score(self.weather_strategy.evaluate(
-            clothing_item, temp, weather))
+        score_color = self.color_strategy.evaluate(
+            clothing_item, other_color, palette_type)
+        score_weather = self.weather_strategy.evaluate(
+            clothing_item, temp, weather)
         if score_color is None or score_weather is None:
             return 0
         return (score_weather + score_color) / 2

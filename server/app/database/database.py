@@ -4,11 +4,9 @@ from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 import os
 from .base import CA_Base
+from app.constants import DATABASE_URL
 # Load environment variables from the .env file
 
-
-# Get DATABASE_URL from environment variables
-DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Create the engine for connecting to the database
 engine = create_engine(DATABASE_URL, pool_size=10, max_overflow=20)
