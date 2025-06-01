@@ -37,24 +37,29 @@ CA_Base.metadata.create_all(bind=engine)
 
 # Check for new tables created by create_all
 new_tables = set(CA_Base.metadata.tables.keys()) - set(existing_tables)
-parsed_url = urlparse(DATABASE_URL)
+try:
 
-username = parsed_url.username       
-password = parsed_url.password       
-database_name = parsed_url.path.lstrip('/')  
+    parsed_url = urlparse(DATABASE_URL)
 
-cmd = [
-    'mysql',
-    '-u', username,
-    f'-p{password}', 
-    database_name
-]
+    username = parsed_url.username       
+    password = parsed_url.password       
+    database_name = parsed_url.path.lstrip('/')  
 
-with open('app/database/init_function.sql', 'r', encoding='utf-8') as f:
-    sql_script = f.read()
+    cmd = [
+        'mysql',
+        '-u', username,
+        f'-p{password}', 
+        database_name
+    ]
 
-process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-stdout, stderr = process.communicate(input=sql_script)
+    with open('app/database/init_function.sql', 'r', encoding='utf-8') as f:
+        sql_script = f.read()
+
+    process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    stdout, stderr = process.communicate(input=sql_script)
+except Exception as e:
+    logging.error("An error occurred while executing the SQL script: %s", e)
+    stdout, stderr = "", str(e)
 
 if process.returncode == 0:
     logging.info("SQL script executed successfully.")
