@@ -57,14 +57,15 @@ try:
 
     process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     stdout, stderr = process.communicate(input=sql_script)
+    if process.returncode == 0:
+        logging.info("SQL script executed successfully.")
+        if stdout.strip():
+            logging.info("Output:\n%s", stdout)
 except Exception as e:
     logging.error("An error occurred while executing the SQL script: %s", e)
     stdout, stderr = "", str(e)
 
-if process.returncode == 0:
-    logging.info("SQL script executed successfully.")
-    if stdout.strip():
-        logging.info("Output:\n%s", stdout)
+
 else:
     logging.error("Failed to execute SQL script.")
     logging.error("Return code: %d", process.returncode)
