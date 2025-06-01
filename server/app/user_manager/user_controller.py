@@ -251,51 +251,52 @@ def synchronize_user_data(
     old_to_new_items_map = {}
     new_items = []
     # 2. Add new clothing items to the database and associate them with the current user.
-    for file, item in zip(files, items_data):
-        print("Original item:", item)
-        from app.close_manager import save_file
+    if items_data is not None and len(items_data) > 0:
+        for file, item in zip(files, items_data):
+            print("Original item:", item)
+            from app.close_manager import save_file
 
-        saved_name = save_file(file)
-        logging.debug(f"File '{file.filename}' saved as '{saved_name}'")
+            saved_name = save_file(file)
+            logging.debug(f"File '{file.filename}' saved as '{saved_name}'")
 
 
-        item_data_cleaned = {
-            k: v for k, v in item.items()
-            if k not in ("id", "owner_id")
-        }
+            item_data_cleaned = {
+                k: v for k, v in item.items()
+                if k not in ("id", "owner_id")
+            }
 
-        item_data_cleaned["filename"] = saved_name
+            item_data_cleaned["filename"] = saved_name
 
-        new_item = ClothingItem(**item_data_cleaned, owner_id=current_user.id)
-        db.add(new_item)
+            new_item = ClothingItem(**item_data_cleaned, owner_id=current_user.id)
+            db.add(new_item)
+            db.commit()
+
+            old_to_new_items_map[item["id"]] = new_item.id
+            new_items.append(new_item)
+
         db.commit()
-
-        old_to_new_items_map[item["id"]] = new_item.id
-        new_items.append(new_item)
-
-    db.commit()
 
     # 3. Creates new clothing combinations and maps the old IDs to the new ones.
     old_to_new_combos_map = {}  
+    if combos_data is not None:
+        for combo in combos_data:
+            old_combo_id = combo["id"]
 
-    for combo in combos_data:
-        old_combo_id = combo["id"]
+            new_combo = ClothingCombination(
+                name=combo["name"], owner_id=current_user.id)
+            db.add(new_combo)
+            db.commit()  
+            
+            old_to_new_combos_map[old_combo_id] = new_combo.id
 
-        new_combo = ClothingCombination(
-            name=combo["name"], owner_id=current_user.id)
-        db.add(new_combo)
-        db.commit()  
-        
-        old_to_new_combos_map[old_combo_id] = new_combo.id
+            for old_item_id in combo["item_ids"]:
+                new_item_id = old_to_new_items_map.get(old_item_id)
+                if new_item_id:
+                    item = db.get(ClothingItem, new_item_id)
+                    if item:
+                        new_combo.items.append(item)
 
-        for old_item_id in combo["item_ids"]:
-            new_item_id = old_to_new_items_map.get(old_item_id)
-            if new_item_id:
-                item = db.get(ClothingItem, new_item_id)
-                if item:
-                    new_combo.items.append(item)
-
-        db.commit()
+            db.commit()
 
     current_user.synchronized_at = datetime.now(timezone.utc)
     db.commit()

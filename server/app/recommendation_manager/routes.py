@@ -6,7 +6,7 @@ import os
 import random
 import time
 from typing import List, Optional, Union
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, Body, Depends, Form, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import requests
@@ -85,7 +85,7 @@ class RecommendationRequest(BaseModel):
 
 @recommendation_router.post("/recommendations")
 async def get_recommendations(
-    data: RecommendationRequest,
+    data: RecommendationRequest ,# = Body(...)
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
