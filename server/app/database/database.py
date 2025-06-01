@@ -1,3 +1,6 @@
+import logging
+import subprocess
+from urllib.parse import urlparse
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -34,7 +37,33 @@ CA_Base.metadata.create_all(bind=engine)
 
 # Check for new tables created by create_all
 new_tables = set(CA_Base.metadata.tables.keys()) - set(existing_tables)
+parsed_url = urlparse(DATABASE_URL)
 
+username = parsed_url.username       
+password = parsed_url.password       
+database_name = parsed_url.path.lstrip('/')  
+
+cmd = [
+    'mysql',
+    '-u', username,
+    f'-p{password}', 
+    database_name
+]
+
+with open('app/database/init_function.sql', 'r', encoding='utf-8') as f:
+    sql_script = f.read()
+
+process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+stdout, stderr = process.communicate(input=sql_script)
+
+if process.returncode == 0:
+    logging.info("SQL script executed successfully.")
+    if stdout.strip():
+        logging.info("Output:\n%s", stdout)
+else:
+    logging.error("Failed to execute SQL script.")
+    logging.error("Return code: %d", process.returncode)
+    logging.error("Error output:\n%s", stderr)
 # Display newly created tables
 if new_tables:
     print(f"🛠️New tables created: {', '.join(new_tables)}")

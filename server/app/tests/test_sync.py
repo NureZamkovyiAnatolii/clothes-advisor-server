@@ -140,16 +140,13 @@ def test_sync_data_with_files(db_session: Session, auth_token):
     assert len(combos[0].items) == 2
 
     # Перевірка, що файл існує на сервері
-    saved_filename = items[0].filename  # ← це URL, наприклад, http://.../uploads/xxx.jpg
+    saved_filename = items[0].filename  
 
     # Витягуємо лише ім’я файлу
     import os
     from urllib.parse import urlparse
 
     filename_only = os.path.basename(urlparse(saved_filename).path)
-    local_path = os.path.join("uploads", filename_only)
+    local_path = os.path.join("uploads_tests", filename_only)
 
     assert os.path.exists(local_path), f"File {local_path} not found on server"
-
-    # 🔄 Прибирання за собою (опційно)
-    #os.remove(file_path)
