@@ -15,6 +15,7 @@ from app.user_manager import get_current_user, oauth2_scheme
 from app.database.database import get_db
 from app.model.сlothing_item import ClothingItem
 from app.recommendation_manager.recommendation_strategies import (
+    RecommendationContext,
     WeatherRecommendationStrategy,
     ColorRecommendationStrategy,
     EventRecommendationStrategy,
@@ -85,7 +86,7 @@ class RecommendationRequest(BaseModel):
 
 @recommendation_router.post("/recommendations")
 async def get_recommendations(
-    data: RecommendationRequest ,# = Body(...)
+    data: RecommendationRequest,  # = Body(...)
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ):
@@ -108,48 +109,63 @@ async def get_recommendations(
         except ValueError:
             return None
 
-    r, g, b = parse_color_component(red), parse_color_component(green), parse_color_component(blue)
+    r, g, b = parse_color_component(red), parse_color_component(
+        green), parse_color_component(blue)
     other_color = (r, g, b) if None not in (r, g, b) else None
     location = True if lat and lon else False
-    temp, weather, icon, code = get_weather_at_time_by_coords(lat, lon, target_time) if location and target_time else (None, None, None,None)
+    temp, weather, icon, code = get_weather_at_time_by_coords(
+        lat, lon, target_time) if location and target_time else (None, None, None, None)
 
-    items = db.query(ClothingItem).filter(ClothingItem.owner_id == user.id).all()
+    items = db.query(ClothingItem).filter(
+        ClothingItem.owner_id == user.id).all()
     if not items:
         return {"detail": "No clothing items found for user.", "data": {}}
 
-    
     outfits = []
     for palette_type in palette_types:
         def evaluate_item(item: ClothingItem):
             item_results = {}
-            all_fields_filled = all([location, target_time, r is not None, g is not None, b is not None, palette_type, event])
-
+            all_fields_filled = all(
+                [location, target_time, r is not None, g is not None, b is not None, palette_type, event])
+            rc = RecommendationContext(WeatherRecommendationStrategy())
             if location and target_time:
-                weather_score = WeatherRecommendationStrategy().evaluate(item, float(temp), weather)
-                item_results["final_match"] = {"type": "weather_match", "result": weather_score}
+                weather_score = rc.evaluate(
+                    item, temp=float(temp), weather=weather)
+                item_results["final_match"] = {
+                    "type": "weather_match", "result": weather_score}
 
             if other_color and palette_type:
-                color_score = ColorRecommendationStrategy().evaluate(item, other_color, palette_type)
-                item_results["final_match"] =  {"type": "color_match", "result": color_score}
+                color_score = rc.set_strategy(ColorRecommendationStrategy()).evaluate(item,other_color=other_color,palette_type=palette_type)
+                item_results["final_match"] = {
+                    "type": "color_match", "result": color_score}
 
             if event:
-                event_score = EventRecommendationStrategy().evaluate(item, event)
-                item_results["final_match"] =  {"type": "event_match", "result": event_score}
+                event_score = rc.set_strategy(
+                    EventRecommendationStrategy()).evaluate(item, event=event)
+                item_results["final_match"] = {
+                    "type": "event_match", "result": event_score}
 
             if not all_fields_filled:
                 if other_color and palette_type and event:
-                    score = ColorEventStrategy().evaluate(item, other_color, palette_type, event)
-                    item_results["final_match"] = {"type": "color_event_match", "result": score}
+                    score = rc.set_strategy(ColorEventStrategy()).evaluate(item, other_color=other_color,palette_type=palette_type, event=event)
+                    item_results["final_match"] = {
+                        "type": "color_event_match", "result": score}
                 if location and target_time and event:
-                    score = WeatherEventStrategy().evaluate(item, temp, weather, event)
-                    item_results["final_match"] = {"type": "weather_event_match", "result": score}
+                    score = rc.set_strategy(WeatherEventStrategy()).evaluate(
+                        item, temp=temp, weather=weather, event=event)
+                    item_results["final_match"] = {
+                        "type": "weather_event_match", "result": score}
                 if location and target_time and other_color and palette_type:
-                    score = ColorWeatherStrategy().evaluate(item, other_color, palette_type, temp, weather)
-                    item_results["final_match"] = {"type": "color_weather_match", "result": score}
+                    score = rc.set_strategy(ColorWeatherStrategy()).evaluate(
+                        item, other_color=other_color, palette_type=palette_type, temp=temp, weather=weather)
+                    item_results["final_match"] = {
+                        "type": "color_weather_match", "result": score}
 
             if all_fields_filled:
-                avg_score = AverageRecommendationStrategy().evaluate(item, temp, weather, other_color, palette_type, event)
-                item_results["final_match"] = {"type": "average_match", "result": avg_score}
+                avg_score = rc.set_strategy(AverageRecommendationStrategy()).evaluate(
+                    item, temp=temp, weather=weather, other_color=other_color, palette_type=palette_type, event=event)
+                item_results["final_match"] = {
+                    "type": "average_match", "result": avg_score}
 
             # Apply nerf
             if include_favorites and not item.is_favorite:
@@ -170,7 +186,6 @@ async def get_recommendations(
         # Parallel evaluation of items
         with ThreadPoolExecutor() as executor:
             futures = executor.map(evaluate_item, items)
-            
 
         results = {item_id: result for item_id, result in futures}
         formatted_json = json.dumps(results, indent=4, ensure_ascii=False)
@@ -188,9 +203,9 @@ async def get_recommendations(
             return "unknown"
 
         grouped_items = {
-            "tops": [], 
-            "bottoms": [], 
-            "outerwear": [], 
+            "tops": [],
+            "bottoms": [],
+            "outerwear": [],
             "one_piece": [],
             "footwear": [],
             "headwear": [],
@@ -198,13 +213,15 @@ async def get_recommendations(
             "underwear": []
         }
         optional_groups = ["footwear", "headwear", "accessories", "underwear"]
+
         def extend_with_optional_groups(base_items: list, grouped_items: dict, optional_groups: list) -> list:
             extended = base_items.copy()
             for group in optional_groups:
                 items = grouped_items.get(group)
                 if items:
                     # Filter items with score >= 0.7
-                    good_items = [item for item in items if extract_score(item) >= 0.7]
+                    good_items = [
+                        item for item in items if extract_score(item) >= 0.7]
                     logging.info(f"Good items in {group}: {good_items}")
                     if len(good_items) >= 2:
                         # Choose random item with score >= 0.7
@@ -215,11 +232,11 @@ async def get_recommendations(
                     extended.append(chosen_item)
             return extended
 
-        
         for item_id, item_data in results.items():
             group = get_category_group(item_data["category"], grouping)
             item_data["group"] = group
-            grouped_items.setdefault(group, []).append({**item_data, "id": item_id})
+            grouped_items.setdefault(group, []).append(
+                {**item_data, "id": item_id})
 
         # creating outfits
 
@@ -238,7 +255,8 @@ async def get_recommendations(
         for top in grouped_items.get("tops", []):
             for bottom in grouped_items.get("bottoms", []):
                 base_items = [top, bottom]
-                full_outfit = extend_with_optional_groups(base_items, grouped_items, optional_groups)
+                full_outfit = extend_with_optional_groups(
+                    base_items, grouped_items, optional_groups)
                 outfits.append({
                     "type": "tops_bottoms",
                     "items": full_outfit,
@@ -249,7 +267,8 @@ async def get_recommendations(
         for outer in grouped_items.get("outerwear", []):
             for bottom in grouped_items.get("bottoms", []):
                 base_items = [outer, bottom]
-                full_outfit = extend_with_optional_groups(base_items, grouped_items, optional_groups)
+                full_outfit = extend_with_optional_groups(
+                    base_items, grouped_items, optional_groups)
                 outfits.append({
                     "type": "outerwear_bottoms",
                     "items": full_outfit,
@@ -259,7 +278,8 @@ async def get_recommendations(
 
         for piece in grouped_items.get("one_piece", []):
             base_items = [piece]
-            full_outfit = extend_with_optional_groups(base_items, grouped_items, optional_groups)
+            full_outfit = extend_with_optional_groups(
+                base_items, grouped_items, optional_groups)
             outfits.append({
                 "type": "one_piece",
                 "items": outfits,
@@ -268,14 +288,14 @@ async def get_recommendations(
             })
 
         outfits.sort(key=lambda x: x["score_avg"], reverse=True)
-        
+
     total_duration = time.perf_counter() - start_total
     logging.info(f"Request processed in {total_duration:.3f} seconds.")
     logging.info(f"Request generated {len(outfits)} items.")
     logging.info(f"Request generated\n {outfits}")
     return {
         "detail": "Recommendations computed successfully for each palette type.",
-        "data":{ 
-        "weather": {"temp": temp, "weather": weather, "icon": icon, "code": code} if location else None,
-        "outfits": outfits}
+        "data": {
+            "weather": {"temp": temp, "weather": weather, "icon": icon, "code": code} if location else None,
+            "outfits": outfits}
     }

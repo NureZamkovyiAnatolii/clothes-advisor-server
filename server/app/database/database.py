@@ -65,7 +65,6 @@ except Exception as e:
     logging.error("An error occurred while executing the SQL script: %s", e)
     stdout, stderr = "", str(e)
 
-
 else:
     logging.error("Failed to execute SQL script.")
     logging.error("Return code: %d", process.returncode)

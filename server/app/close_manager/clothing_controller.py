@@ -7,15 +7,12 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.model import *
-from app.user_manager import get_current_user_id, SERVER_URL
+from app.user_manager import get_current_user_id
 from rembg import remove
-from app.constants import UPLOAD_DIR
+from app.constants import UPLOAD_DIR, MAX_FILE_SIZE_BYTES, MAX_CLOTHING_ITEMS_COUNT, MAX_CLOTHING_COMBINATIONS_COUNT, SERVER_URL, MAX_FILE_SIZE_MB
 # Directory for storing files, max file size, and max clothing items/combination counts
 
-MAX_FILE_SIZE_MB = 5
-MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
-MAX_CLOTHING_ITEMS_COUNT = 100
-MAX_CLOTHING_COMBINATIONS_COUNT = 50
+
 
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)

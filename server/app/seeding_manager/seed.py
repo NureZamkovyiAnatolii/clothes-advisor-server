@@ -234,6 +234,45 @@ def seed_clothing_items(db: Session):
             "price": 199.00,
             "is_favorite": True,
             "owner_id": 1
+        },
+        {
+            "filename": "15.jpg",
+            "name": "Жовті штани",
+            "category": CategoryEnum.pants,
+            "season": SeasonEnum.summer,
+            "red": 188, "green": 212, "blue": 34,
+            "material": "Бавовна",
+            "brand": "Uniqlo",
+            "purchase_date": date(2023, 4, 10),
+            "price": 199.00,
+            "is_favorite": True,
+            "owner_id": 1
+        },
+        {
+            "filename": "16.jpg",
+            "name": "Жовта футболка",
+            "category": CategoryEnum.tshirt,
+            "season": SeasonEnum.summer,
+            "red": 233, "green": 237, "blue": 2,
+            "material": "Бавовна",
+            "brand": "Uniqlo",
+            "purchase_date": date(2023, 4, 10),
+            "price": 199.00,
+            "is_favorite": True,
+            "owner_id": 1
+        },
+        {
+            "filename": "17.jpg",
+            "name": "Жовті кросівки",
+            "category": CategoryEnum.sneakers,
+            "season": SeasonEnum.summer,
+            "red": 237, "green": 202, "blue": 2,
+            "material": "Бавовна",
+            "brand": "Uniqlo",
+            "purchase_date": date(2023, 4, 10),
+            "price": 199.00,
+            "is_favorite": True,
+            "owner_id": 1
         }
     ]
 
@@ -251,7 +290,10 @@ def seed_clothing_items(db: Session):
         "https://iplanet.one/cdn/shop/files/Apple_Watch_Ultra_2_LTE_49mm_Titanium_Orange_Ocean_Band_PDP_Image_Avail_Position-1__en-IN_9ca47923-c612-46ac-a932-fbce9b5c705c.jpg?v=1698878148&width=1445",
         "https://site-obuvi.com.ua/images/products/bosonozhki_s667-12_na_site-obuvi.com__2_.jpg",
         "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSSG9CAt7HBLoSoWCcs29-JraQQqxdooapRXQ&s",
-        "https://shop.energetix.tv/media/image/21/52/e0/3191-26_WEB_DBF55E0E0E5372B410889F2CB7F86CD3_768x768@2x.jpg"
+        "https://shop.energetix.tv/media/image/21/52/e0/3191-26_WEB_DBF55E0E0E5372B410889F2CB7F86CD3_768x768@2x.jpg",
+        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRficzLtsl8jurQG7SjFCaSI6zj9oaYKJNBbA&s",
+        "https://ladan-shop.com.ua/assets/images/products/5768/dj4-sonyashnyk.jpg",
+        "https://aspolo.ua/image/cache/catalog/obuv19/muzhskie-vysokie-krossovki-adidas-forum-mid-refined-zheltye-810895-1-800x533.jpg"
     ]
 
     uploads_dir = os.path.join(os.getcwd(), "uploads")

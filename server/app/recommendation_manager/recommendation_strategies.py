@@ -57,10 +57,6 @@ class EventRecommendationStrategy(RecommendationStrategy):
     def evaluate(self, clothing_item: ClothingItem, event: str):
         return clothing_item.evaluate_event_match(event)
 
-
-# --- Combined strategies for different scenarios ---
-
-
 class ColorEventStrategy(RecommendationStrategy):
     def __init__(self):
         self.color_strategy = ColorRecommendationStrategy(
@@ -75,7 +71,6 @@ class ColorEventStrategy(RecommendationStrategy):
             return 0
         return (score_color + score_event) / 2
 
-
 class WeatherEventStrategy(RecommendationStrategy):
     def __init__(self):
         self.weather_strategy = WeatherRecommendationStrategy(
@@ -89,7 +84,6 @@ class WeatherEventStrategy(RecommendationStrategy):
         if score_weather is None or score_event is None:
             return 0
         return (score_weather + score_event) / 2
-
 
 class ColorWeatherStrategy(RecommendationStrategy):
     def __init__(self):
@@ -106,7 +100,6 @@ class ColorWeatherStrategy(RecommendationStrategy):
         if score_color is None or score_weather is None:
             return 0
         return (score_weather + score_color) / 2
-
 
 class AverageRecommendationStrategy(RecommendationStrategy):
     def __init__(self):
@@ -128,6 +121,16 @@ class AverageRecommendationStrategy(RecommendationStrategy):
             return 0
         return sum(scores) / len(scores)
 
+class RecommendationContext:
+    def __init__(self, strategy: RecommendationStrategy):
+        self.strategy = strategy
+
+    def set_strategy(self, strategy: RecommendationStrategy):
+        self.strategy = strategy
+        return self
+
+    def evaluate(self, clothing_item, **kwargs):
+        return self.strategy.evaluate(clothing_item, **kwargs)
 
 def test():
     item = ClothingItem(

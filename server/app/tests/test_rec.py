@@ -28,7 +28,6 @@ def auth_token():
     return headers
 
 def test_recommendations_weather_match(auth_token):
-
     payload = {
         "lat": 50.45,
         "lon": 30.523,
@@ -36,8 +35,7 @@ def test_recommendations_weather_match(auth_token):
         "red": "",
         "green": "",
         "blue": "",
-        "palette_types": [""],
-        "event": "",
+        "palette_types": [""],        "event": "",
         "include_favorites": False
     }
 
@@ -48,18 +46,15 @@ def test_recommendations_weather_match(auth_token):
     assert "data" in data
     outfits = data["data"]["outfits"]
     assert outfits, "No outfits returned"
-    # Шукаємо перший item в першому outfit
     first_outfit = outfits[0]
     items = first_outfit["items"]
     assert items, "No items in first outfit"
 
-    # Беремо перший item
     first_item = items[0]
     final_match = first_item.get("final_match")
     assert final_match is not None, "Missing final_match"
     assert isinstance(final_match, dict), "final_match is not a dict"
 
-    # 🔍 Тестуємо тип відповідності
     assert final_match.get("type") == "weather_match", f"Expected 'weather_match', got: {final_match.get('type')}"
 def test_recommendations_color_match(auth_token):
 
